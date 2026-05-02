@@ -1,0 +1,234 @@
+// ═══════════════════════════════════════════════════════════════
+// EmPay HRMS — Prisma Schema
+// Engineer A owns this file. Engineer B never runs prisma migrate.
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── ENUMS ────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  hr_officer
+  payroll_officer
+  employee
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  half_day
+}
+
+enum LeaveType {
+  casual
+  sick
+  earned
+  unpaid
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+}
+
+enum PayrunStatus {
+  draft
+  finalized
+}
+
+// ── MODELS ───────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(employee)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  profile          EmployeeProfile?
+  attendance        Attendance[]
+  leaveRequests    LeaveRequest[]   @relation("EmployeeLeaves")
+  approvedLeaves   LeaveRequest[]   @relation("ApproverLeaves")
+  payslips         Payslip[]
+  auditLogs        AuditLog[]       @relation("AuditActor")
+
+  @@map("users")
+}
+
+model EmployeeProfile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  firstName    String
+  lastName     String
+  phone        String?
+  department   String
+  designation  String
+  employeeCode String   @unique
+  joiningDate  DateTime @db.Date
+  gender       String   @default("other") // male | female | other
+  avatarUrl    String?  // relative path: /uploads/avatars/<filename> or external URL
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryStructure SalaryStructure?
+  leaveBalances   LeaveBalance[]
+
+  @@map("employee_profiles")
+}
+
+model SalaryStructure {
+  id          String   @id @default(uuid())
+  profileId   String   @unique
+  ctcAnnual   Decimal  @db.Decimal(12, 2)
+  basicPct    Decimal  @db.Decimal(5, 2) @default(40.00) // % of CTC that is Basic
+  hraPct      Decimal  @db.Decimal(5, 2) @default(50.00) // % of Basic that is HRA
+  pfEnabled   Boolean  @default(true)
+  esicEnabled Boolean  @default(false)
+  state       String   @default("Maharashtra") // for PT slab selection
+  effectiveFrom DateTime @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  profile EmployeeProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("salary_structures")
+}
+
+model Attendance {
+  id           String           @id @default(uuid())
+  employeeId   String
+  date         DateTime         @db.Date
+  status       AttendanceStatus
+  clockIn      DateTime?
+  clockOut     DateTime?
+  overrideBy   String?          // userId of admin who overrode
+  overrideNote String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  // Relations
+  employee User @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // One record per employee per day
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+model LeaveBalance {
+  id          String   @id @default(uuid())
+  profileId   String
+  leaveType   LeaveType
+  year        Int
+  totalDays   Int      @default(0)
+  consumed    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  profile EmployeeProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, leaveType, year])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id          String      @id @default(uuid())
+  employeeId  String
+  leaveType   LeaveType
+  fromDate    DateTime    @db.Date
+  toDate      DateTime    @db.Date
+  totalDays   Int
+  reason      String
+  status      LeaveStatus @default(pending)
+  approverId  String?     // userId of payroll_officer/admin who acted
+  approverNote String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  employee User  @relation("EmployeeLeaves", fields: [employeeId], references: [id], onDelete: Cascade)
+  approver User? @relation("ApproverLeaves", fields: [approverId], references: [id])
+
+  @@map("leave_requests")
+}
+
+model PayrollRun {
+  id          String       @id @default(uuid())
+  month       Int          // 1–12
+  year        Int
+  status      PayrunStatus @default(draft)
+  triggeredBy String       // userId of payroll_officer/admin
+  finalizedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  payslips Payslip[]
+
+  // One payrun per month-year
+  @@unique([month, year])
+  @@map("payroll_runs")
+}
+
+model Payslip {
+  id              String   @id @default(uuid())
+  payrunId        String
+  employeeId      String
+  ctcAnnual       Decimal  @db.Decimal(12, 2)
+  basicSalary     Decimal  @db.Decimal(12, 2)
+  hra             Decimal  @db.Decimal(12, 2)
+  specialAllow    Decimal  @db.Decimal(12, 2)
+  grossSalary     Decimal  @db.Decimal(12, 2)
+  pfDeduction     Decimal  @db.Decimal(12, 2)
+  ptDeduction     Decimal  @db.Decimal(12, 2)
+  esicDeduction   Decimal  @db.Decimal(12, 2) @default(0)
+  lopDeduction    Decimal  @db.Decimal(12, 2)
+  totalDeductions Decimal  @db.Decimal(12, 2)
+  netPay          Decimal  @db.Decimal(12, 2)
+  workingDays     Int
+  presentDays     Int
+  leaveDays       Int
+  absentDays      Int
+  lopDays         Int
+  createdAt       DateTime @default(now())
+
+  // Relations
+  payrun   PayrollRun @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  employee User       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([payrunId, employeeId])
+  @@map("payslips")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String   // userId performing action
+  entity      String   // "attendance" | "leave" | "payroll" | "employee"
+  entityId    String
+  action      String   // "override" | "approve" | "reject" | "create" | "update"
+  beforeValue Json?    // JSONB snapshot before change
+  afterValue  Json?    // JSONB snapshot after change
+  note        String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  actor User @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
