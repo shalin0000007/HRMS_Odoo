@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login          from '../pages/auth/Login';
 import SignUp         from '../pages/auth/SignUp';
+import ForgotPassword from '../pages/auth/ForgotPassword';
+import ResetPassword  from '../pages/auth/ResetPassword';
 import VerifyEmail    from '../pages/auth/VerifyEmail';
 import Unauthorized   from '../pages/auth/Unauthorized';
 import Dashboard      from '../pages/dashboard/Dashboard';
@@ -12,6 +14,7 @@ import Employees      from '../pages/employees/Employees';
 import EmployeeProfile from '../pages/employees/EmployeeProfile';
 import Reports        from '../pages/reports/Reports';
 import Settings       from '../pages/settings/Settings';
+import LeaveReport    from '../pages/reports/LeaveReport';
 import ProtectedRoute from './ProtectedRoute';
 
 // ==========================================
@@ -27,9 +30,11 @@ const AppRouter = () => (
           ========================================== 
           These pages are accessible to everyone (no login required).
       */}
-      <Route path="/login"        element={<Login />} />
-      <Route path="/signup"       element={<SignUp />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/login"           element={<Login />} />
+      <Route path="/signup"          element={<SignUp />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password"  element={<ResetPassword />} />
+      <Route path="/verify-email"    element={<VerifyEmail />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* ==========================================
@@ -54,8 +59,9 @@ const AppRouter = () => (
       <Route path="/employees/:id" element={<ProtectedRoute allowedRoles={['admin','hr_officer','payroll_officer','employee']}><EmployeeProfile /></ProtectedRoute>} />
 
       <Route path="/payroll"              element={<ProtectedRoute allowedRoles={['admin','payroll_officer','hr_officer']}><Payroll /></ProtectedRoute>} />
-      <Route path="/payroll/payrun/:id"   element={<ProtectedRoute allowedRoles={['admin','payroll_officer','hr_officer']}><PayrunDetail /></ProtectedRoute>} />
-      <Route path="/reports"             element={<ProtectedRoute allowedRoles={['admin','payroll_officer','hr_officer']}><Reports /></ProtectedRoute>} />
+      <Route path="/payroll/payrun/:id"   element={<ProtectedRoute allowedRoles={['admin', 'payroll_officer', 'hr_officer']}><PayrunDetail /></ProtectedRoute>} />
+      <Route path="/reports"             element={<ProtectedRoute allowedRoles={['admin', 'payroll_officer', 'hr_officer']}><Reports /></ProtectedRoute>} />
+      <Route path="/reports/leaves"      element={<ProtectedRoute allowedRoles={['admin', 'hr_officer']}><LeaveReport /></ProtectedRoute>} />
 
       {/* Default Redirection */}
       <Route path="/"  element={<Navigate to="/dashboard" replace />} />

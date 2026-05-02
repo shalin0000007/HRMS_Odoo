@@ -5,17 +5,12 @@ import AppLayout from '../../components/AppLayout';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 import { SkeletonCard } from '../../components/Skeleton';
-import { Plus, Search, CreditCard, AlertTriangle, Mail, MoreVertical, Users } from 'lucide-react';
+import { Plus, Search, CreditCard, AlertTriangle, Mail, MoreVertical, Users, Download } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { employeesAPI } from '../../api/endpoints';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-
-function getAvatar(emp) {
-  if (emp.profile?.avatarUrl) return `${API_BASE}${emp.profile.avatarUrl}`;
-  const name = `${emp.profile?.firstName || ''}+${emp.profile?.lastName || ''}`;
-  return `https://ui-avatars.com/api/?name=${name}&background=3B82F6&color=fff&size=128`;
-}
+import Avatar from '../../components/Avatar';
+import { getAvatarUrl } from '../../utils/avatar';
 
 export default function Employees() {
   const { user } = useAuthStore();
@@ -24,6 +19,7 @@ export default function Employees() {
   const isAdmin = ['admin', 'hr_officer', 'payroll_officer'].includes(user?.role);
   const [query, setQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState(null);
 
   // ==========================================
   // 1. DATA FETCHING (REACT QUERY)
@@ -77,23 +73,39 @@ export default function Employees() {
 
   return (
     <AppLayout>
+      <style>{`
+        @media print {
+          nav, aside, button, header, .no-print { display: none !important; }
+          .print-area { margin: 0; padding: 20px !important; background: white !important; }
+          .bg-black { background: white !important; padding: 0 !important; }
+          .text-white { color: #111827 !important; }
+          .card-shadow { box-shadow: none !important; border: 1px solid #E5E7EB; }
+        }
+      `}</style>
+
       {/* Black hero header */}
-      <div className="bg-black px-6 lg:px-8 pt-6 pb-5">
+      <div className="bg-black px-6 lg:px-8 pt-6 pb-5 no-print">
         <div className="flex items-center justify-between flex-wrap gap-4 animate-fade-in-up">
           <div>
             <h1 className="text-3xl font-extrabold text-white">Employees</h1>
             <p className="text-[#9CA3AF] text-sm mt-1">{total} members in your organisation</p>
           </div>
-          {isAdmin && (
-            <button id="add-employee-btn" onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold px-5 py-2.5 rounded-full text-sm transition-all shadow-lg shadow-[#3B82F6]/25">
-              <Plus size={15} /> Add Employee
+          <div className="flex items-center gap-3">
+            <button onClick={() => window.print()} 
+              className="flex items-center gap-2 border border-white/20 text-white/80 hover:text-white hover:border-white/40 px-4 py-2 rounded-full text-xs font-semibold transition-all">
+              <Download size={13} /> Export PDF
             </button>
-          )}
+            {isAdmin && (
+              <button id="add-employee-btn" onClick={() => setShowForm(true)}
+                className="flex items-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold px-5 py-2.5 rounded-full text-sm transition-all shadow-lg shadow-[#3B82F6]/25">
+                <Plus size={15} /> Add Employee
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="p-6 lg:p-8 space-y-6 print-area">
         {/* Search & Actions Bar */}
         <div className="flex items-center justify-between flex-wrap gap-4 animate-fade-in-up delay-2">
           <div className="relative w-full max-w-sm">
@@ -140,13 +152,28 @@ export default function Employees() {
                 <div key={emp.id} className="bg-white rounded-2xl card-shadow-lg overflow-hidden group hover:shadow-xl transition-shadow relative">
                   {/* Card Header & Avatar */}
                   <div className="relative h-20 bg-gradient-to-r from-[#F5F6F8] to-[#E5E7EB]">
-                    <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/50 hover:bg-white flex items-center justify-center text-[#6B7280] transition-colors z-10">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(menuOpenId === emp.id ? null : emp.id);
+                      }} 
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/50 hover:bg-white flex items-center justify-center text-[#6B7280] transition-colors z-10"
+                    >
                       <MoreVertical size={16} />
                     </button>
+                    
+                    {menuOpenId === emp.id && (
+                      <div className="absolute top-12 right-3 w-40 bg-white rounded-xl shadow-xl border border-[#E5E7EB] z-50 py-1 animate-in fade-in zoom-in duration-200">
+                        <button onClick={() => alert(`Editing ${fullName}...`)} className="w-full text-left px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#F5F6F8] transition-colors">Edit Profile</button>
+                        <button onClick={() => alert(`Resetting password for ${fullName}...`)} className="w-full text-left px-4 py-2 text-xs font-semibold text-[#111827] hover:bg-[#F5F6F8] transition-colors">Reset Password</button>
+                        <hr className="my-1 border-[#F5F6F8]" />
+                        <button onClick={() => alert(`Deleting ${fullName}...`)} className="w-full text-left px-4 py-2 text-xs font-semibold text-[#EF4444] hover:bg-[#EF4444]/5 transition-colors">Terminate</button>
+                      </div>
+                    )}
                   </div>
                   <div className="px-6 pb-6 pt-0 relative flex flex-col items-center">
                     <div className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-white -mt-12 overflow-hidden relative z-10">
-                      <img src={getAvatar(emp)} alt={fullName} className="w-full h-full object-cover" />
+                      <Avatar user={emp} className="w-full h-full" />
                     </div>
                     
                     {/* Info */}
@@ -181,9 +208,9 @@ export default function Employees() {
                         View Profile
                       </button>
                       <div className="flex gap-2">
-                        <button className="w-9 h-9 rounded-xl border border-[#E5E7EB] hover:border-[#3B82F6] hover:text-[#3B82F6] text-[#9CA3AF] flex items-center justify-center transition-colors">
+                        <a href={`mailto:${emp.email}`} className="w-9 h-9 rounded-xl border border-[#E5E7EB] hover:border-[#3B82F6] hover:text-[#3B82F6] text-[#9CA3AF] flex items-center justify-center transition-colors">
                           <Mail size={14} />
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -238,6 +265,11 @@ export default function Employees() {
           </div>
         )}
       </div>
+
+      {/* Global click handler to close menus */}
+      {menuOpenId && (
+        <div className="fixed inset-0 z-40" onClick={() => setMenuOpenId(null)} />
+      )}
     </AppLayout>
   );
 }

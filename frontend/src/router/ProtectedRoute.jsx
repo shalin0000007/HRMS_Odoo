@@ -11,12 +11,9 @@ import useAuthStore from '../store/authStore';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, token } = useAuthStore();
   
-  console.log('ProtectedRoute check - token:', token ? 'exists' : 'null', 'user:', user?.email || 'null');
-
   // If no token exists, the user is not logged in.
   // We force them to the login page immediately.
   if (!token) {
-    console.log('No token, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 

@@ -60,6 +60,26 @@ async function getDashboard(req, res, next) {
     // Department headcount
     const deptHeadcount = await getDeptHeadcount();
 
+    // Recent activity (Audit Logs)
+    const recentActivity = await prisma.auditLog.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: { actor: { include: { profile: true } } }
+    });
+
+    // Pending tasks (Leave Requests + Draft Payruns)
+    const [pendingLeaveTasks, draftPayruns] = await Promise.all([
+      prisma.leaveRequest.findMany({
+        where: { status: 'pending' },
+        take: 3,
+        include: { employee: { include: { profile: true } } }
+      }),
+      prisma.payrollRun.findMany({
+        where: { status: 'draft' },
+        take: 2
+      })
+    ]);
+
     res.json({
       success: true,
       data: {
@@ -81,6 +101,29 @@ async function getDashboard(req, res, next) {
           attendanceSummary,
           leaveDistribution,
           deptHeadcount,
+          recentActivity: recentActivity.map(log => ({
+            id: log.id,
+            time: log.createdAt,
+            event: `${log.actor.profile?.firstName || 'User'} ${log.action} ${log.entity}`,
+            tag: log.entity.toUpperCase(),
+            tagColor: log.entity === 'attendance' ? '#10B981' : log.entity === 'leave' ? '#F59E0B' : '#3B82F6'
+          })),
+          tasks: [
+            ...pendingLeaveTasks.map(l => ({
+              id: l.id,
+              title: `Review ${l.employee.profile?.firstName}'s leave`,
+              assignee: l.employee.profile?.firstName?.[0] || 'U',
+              status: 'pending',
+              priority: 'high'
+            })),
+            ...draftPayruns.map(p => ({
+              id: p.id,
+              title: `Finalize ${p.month}/${p.year} payroll`,
+              assignee: 'P',
+              status: 'pending',
+              priority: 'medium'
+            }))
+          ]
         },
       },
     });

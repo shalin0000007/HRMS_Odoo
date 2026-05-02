@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AppLayout from '../../components/AppLayout';
 import useAuthStore from '../../store/authStore';
-import { Clock, ChevronLeft, ChevronRight, CalendarDays, Users, TrendingUp, AlertCircle, Edit3 } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, CalendarDays, Users, TrendingUp, AlertCircle, Edit3, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { attendanceAPI } from '../../api/endpoints';
 
@@ -138,23 +138,39 @@ export default function Attendance() {
 
   return (
     <AppLayout>
-      <div className="bg-black px-6 lg:px-8 pt-6 pb-5">
+      <style>{`
+        @media print {
+          nav, aside, button, header, .no-print { display: none !important; }
+          .print-area { margin: 0; padding: 20px !important; background: white !important; }
+          .bg-black { background: white !important; padding: 0 !important; }
+          .text-white { color: #111827 !important; }
+          .card-shadow { box-shadow: none !important; border: 1px solid #E5E7EB; }
+        }
+      `}</style>
+
+      <div className="bg-black px-6 lg:px-8 pt-6 pb-5 no-print">
         <div className="flex items-center justify-between flex-wrap gap-4 animate-fade-in-up">
           <div>
             <h1 className="text-3xl font-extrabold text-white">Attendance</h1>
             <p className="text-[#9CA3AF] text-sm mt-1">Track check-ins, working hours, and patterns</p>
           </div>
-          <button id="check-in-btn" onClick={handleClockToggle}
-            disabled={clockInMut.isPending || clockOutMut.isPending}
-            className={`flex items-center gap-2 font-bold px-6 py-2.5 rounded-full text-sm transition-all shadow-lg disabled:opacity-50 ${
-              clockedIn ? 'bg-[#EF4444] hover:bg-[#DC2626] text-white shadow-[#EF4444]/25' : 'bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-[#3B82F6]/25'
-            }`}>
-            <Clock size={15} /> {clockInMut.isPending || clockOutMut.isPending ? 'Processing...' : clockedIn ? 'Check Out' : 'Check In'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => window.print()} 
+              className="flex items-center gap-2 border border-white/20 text-white/80 hover:text-white hover:border-white/40 px-4 py-2 rounded-full text-xs font-semibold transition-all">
+              <Download size={13} /> Export PDF
+            </button>
+            <button id="check-in-btn" onClick={handleClockToggle}
+              disabled={clockInMut.isPending || clockOutMut.isPending}
+              className={`flex items-center gap-2 font-bold px-6 py-2.5 rounded-full text-sm transition-all shadow-lg disabled:opacity-50 ${
+                clockedIn ? 'bg-[#EF4444] hover:bg-[#DC2626] text-white shadow-[#EF4444]/25' : 'bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-[#3B82F6]/25'
+              }`}>
+              <Clock size={15} /> {clockInMut.isPending || clockOutMut.isPending ? 'Processing...' : clockedIn ? 'Check Out' : 'Check In'}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="p-6 lg:p-8 space-y-5">
+      <div className="p-6 lg:p-8 space-y-5 print-area">
         {clockedIn && todayRecord?.clockIn && (
           <div className="flex items-center gap-3 bg-[#10B981]/8 border border-[#10B981]/15 rounded-xl px-5 py-3 animate-fade-in-up">
             <div className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />

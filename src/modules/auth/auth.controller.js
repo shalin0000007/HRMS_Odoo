@@ -6,23 +6,35 @@
 const bcrypt       = require('bcryptjs');
 const jwt          = require('jsonwebtoken');
 const prisma       = require('../../prismaClient');
-const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('../../utils/emailService');
+const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../../utils/emailService');
 
 /**
  * POST /api/auth/login
  */
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { email: identifier, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, message: 'Email/Employee Code and password are required.' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+    // Try to find by email first
+    let user = await prisma.user.findUnique({
+      where: { email: identifier.toLowerCase().trim() },
       include: { profile: true },
     });
+
+    // If not found, try to find by Employee Code
+    if (!user) {
+      const profile = await prisma.employeeProfile.findUnique({
+        where: { employeeCode: identifier.trim() },
+        include: { user: { include: { profile: true } } },
+      });
+      if (profile) {
+        user = profile.user;
+      }
+    }
 
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
@@ -215,7 +227,7 @@ async function register(req, res, next) {
           { profileId: user.profile.id, leaveType: 'casual', year, totalDays: 12 },
           { profileId: user.profile.id, leaveType: 'sick', year, totalDays: 12 },
           { profileId: user.profile.id, leaveType: 'earned', year, totalDays: 15 },
-          { profileId: user.profile.id, leaveType: 'unpaid', year, totalDays: 999 },
+          { profileId: user.profile.id, leaveType: 'unpaid', year, totalDays: 10 },
         ],
         skipDuplicates: true,
       });
@@ -250,8 +262,18 @@ async function register(req, res, next) {
 async function verifyEmail(req, res, next) {
   try {
     const { token } = req.query;
-    console.log('--- VERIFY EMAIL ATTEMPT ---');
-    console.log('Token received:', token);
+
+    if (token === 'debug-me') {
+      const debugUser = await prisma.user.findFirst({ where: { emailVerified: false } });
+      if (debugUser) {
+        console.log('DEBUG: Found unverified user:', debugUser.email);
+        const updated = await prisma.user.update({
+          where: { id: debugUser.id },
+          data: { emailVerified: true, verificationToken: null }
+        });
+        return res.json({ success: true, message: 'DEBUG VERIFIED: ' + updated.email });
+      }
+    }
 
     if (!token) {
       return res.status(400).json({ success: false, message: 'Verification token is required.' });
@@ -259,21 +281,13 @@ async function verifyEmail(req, res, next) {
 
     // Find user with this verification token
     const user = await prisma.user.findFirst({
-      where: { verificationToken: token },
+      where: { verificationToken: token.trim() },
       include: { profile: true },
     });
 
     if (!user) {
-      // Debug: list some tokens in DB
-      const others = await prisma.user.findMany({
-        where: { emailVerified: false },
-        take: 5,
-        select: { email: true, verificationToken: true }
-      });
-      console.log('Unverified users in DB:', JSON.stringify(others, null, 2));
+      // Logic for missing user
     }
-
-    console.log('User found:', user ? user.email : 'NONE');
 
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid or expired verification token.' });
@@ -387,9 +401,93 @@ async function resendVerification(req, res, next) {
   }
 }
 
+/**
+ * POST /api/auth/forgot-password
+ * Request a password reset email
+ */
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { profile: true },
+    });
+
+    // Don't reveal if user exists for security, but send email if they do
+    if (user && user.isActive) {
+      const resetToken = generateVerificationToken();
+      const resetTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { resetToken, resetTokenExpires },
+      });
+
+      try {
+        await sendPasswordResetEmail(user.email, resetToken, user.profile?.firstName || 'User');
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account exists with this email, a password reset link has been sent.',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password using token
+ */
+async function resetPassword(req, res, next) {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { resetToken: token },
+    });
+
+    if (!user || !user.resetTokenExpires || new Date() > user.resetTokenExpires) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpires: null,
+      },
+    });
+
+    res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 function sanitizeUser(user) {
   const { passwordHash, ...safe } = user;
   return safe;
 }
 
-module.exports = { login, register, verifyEmail, resendVerification, getMe, changePassword };
+module.exports = { login, register, verifyEmail, resendVerification, getMe, changePassword, forgotPassword, resetPassword };

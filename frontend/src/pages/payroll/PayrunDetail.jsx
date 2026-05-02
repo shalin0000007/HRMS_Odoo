@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollAPI } from '../../api/endpoints';
+import Avatar from '../../components/Avatar';
+import { getAvatarUrl } from '../../utils/avatar';
 import AppLayout from '../../components/AppLayout';
 import Badge from '../../components/Badge';
 import { ArrowLeft, CheckCircle, Download, FileDown, Loader2 } from 'lucide-react';
@@ -157,9 +159,7 @@ export default function PayrunDetail() {
                   <tr key={p.id} className="hover:bg-[#F5F6F8]/50 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-white text-[10px] font-bold">
-                          {name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                        </div>
+                        <Avatar user={p.employee} className="w-8 h-8" />
                         <span className="text-sm font-semibold text-[#111827]">{name}</span>
                       </div>
                     </td>

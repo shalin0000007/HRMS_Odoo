@@ -323,6 +323,60 @@ async function main() {
   });
 
   console.log('✅ Leave requests seeded');
+  
+  // ── 7. Seed Payroll Runs & Payslips ─────────────────────────────
+  console.log('🌱 Seeding payroll history for charts...');
+  const payruns = [
+    { month: 11, year: 2025 },
+    { month: 12, year: 2025 },
+    { month: 1,  year: 2026 },
+    { month: 2,  year: 2026 },
+    { month: 3,  year: 2026 },
+    { month: 4,  year: 2026 },
+  ];
+
+  for (const pr of payruns) {
+    const run = await prisma.payrollRun.upsert({
+      where: { month_year: { month: pr.month, year: pr.year } },
+      update: { status: 'finalized' },
+      create: {
+        month:  pr.month,
+        year:   pr.year,
+        status: 'finalized',
+        triggeredBy: admin.id,
+      },
+    });
+
+    // Create a few payslips for each run to populate the totals
+    const salary = 50000 + (Math.random() * 20000);
+    const netPay = salary * 0.92;
+
+    await prisma.payslip.upsert({
+      where: { payrunId_employeeId: { employeeId: alice.id, payrunId: run.id } },
+      update: {},
+      create: {
+        employeeId:  alice.id,
+        payrunId:    run.id,
+        ctcAnnual:   600000,
+        basicSalary: salary * 0.4,
+        hra:         salary * 0.2,
+        specialAllow: salary * 0.4,
+        grossSalary: salary,
+        pfDeduction: salary * 0.05,
+        ptDeduction: 200,
+        lopDeduction: 0,
+        totalDeductions: salary * 0.05 + 200,
+        netPay:      netPay,
+        workingDays: 22,
+        presentDays: 21,
+        leaveDays:   1,
+        absentDays:  0,
+        lopDays:      0,
+      }
+    });
+  }
+
+  console.log('✅ Payroll history seeded');
   console.log('\n🎉 Seed complete!\n');
   console.log('   admin@empay.dev       / Admin@123');
   console.log('   hr@empay.dev          / Hr@123');

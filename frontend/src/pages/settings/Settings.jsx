@@ -207,6 +207,9 @@ export default function Settings() {
                       <input type="checkbox" defaultChecked className="w-4 h-4 rounded accent-[#3B82F6]" />
                     </label>
                   ))}
+                  <button onClick={() => alert('Notification preferences saved!')} className="w-full mt-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-[#3B82F6]/10">
+                    Save Preferences
+                  </button>
                 </div>
               )}
 
@@ -226,6 +229,9 @@ export default function Settings() {
                       <option>Asia/Kolkata (IST +5:30)</option>
                     </select>
                   </div>
+                  <button onClick={() => alert('General settings updated!')} className="w-full mt-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-[#3B82F6]/10">
+                    Update General Settings
+                  </button>
                 </div>
               )}
             </div>

@@ -58,6 +58,15 @@ async function sendVerificationEmail(email, token, firstName) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
 
+  // Log to persistent file
+  const fs = require('fs');
+  const path = require('path');
+  const logDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
+  const logPath = path.join(logDir, 'email.log');
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(logPath, `[${timestamp}] URL for ${email}: ${verificationUrl}\n`);
+
   // Log verification URL to console for development (when email not configured)
   console.log('\n📧 ==========================================');
   console.log(`📧 Verification Email for: ${email}`);
@@ -203,8 +212,71 @@ async function sendWelcomeEmail(email, firstName) {
   }
 }
 
+async function sendPasswordResetEmail(email, token, firstName) {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+  const mailOptions = {
+    from: `"EmPay HRMS" <${process.env.SMTP_USER || 'noreply@empay.dev'}>`,
+    to: email,
+    subject: 'Reset your EmPay password',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+        <div style="background-color: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3B82F6; margin: 0;">EmPay</h1>
+            <p style="color: #6B7280; margin: 5px 0 0 0;">HRMS Platform</p>
+          </div>
+          
+          <h2 style="color: #111827; margin-bottom: 20px;">Password Reset Request</h2>
+          
+          <p style="color: #4B5563; line-height: 1.6; margin-bottom: 20px;">
+            Hi ${firstName}, we received a request to reset your EmPay password. Click the button below to choose a new password.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #3B82F6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          
+          <p style="color: #6B7280; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+            Or copy and paste this link into your browser:
+          </p>
+          
+          <p style="background-color: #F3F4F6; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 12px; color: #4B5563;">
+            ${resetUrl}
+          </p>
+          
+          <p style="color: #6B7280; font-size: 14px; line-height: 1.5; margin-top: 20px;">
+            This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+          </p>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
+          
+          <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin: 0;">
+            © 2025 EmPay HRMS. All rights reserved.
+          </p>
+        </div>
+      </div>
+    `,
+    text: `Hi ${firstName}, reset your EmPay password by clicking this link: ${resetUrl}\n\nThis link expires in 1 hour.`,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Password reset email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   generateVerificationToken,
   sendVerificationEmail,
   sendWelcomeEmail,
+  sendPasswordResetEmail,
 };

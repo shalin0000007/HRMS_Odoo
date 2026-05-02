@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Zap, Shield, BarChart2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Zap, Shield, BarChart2, Mail } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { authAPI } from '../../api/endpoints';
 
@@ -34,7 +34,6 @@ export default function Login() {
     setEmail(u.email);
     setPassword(u.password);
     setLoading(true); setError(''); setNeedsVerification(false);
-    console.log('Demo login attempt:', u.email);
     try {
       // Calls the backend /api/auth/login route
       const res = await authAPI.login({ email: u.email, password: u.password });
@@ -42,15 +41,12 @@ export default function Login() {
       
       // Store token and user data
       const { token, user } = res.data;
-      console.log('Setting token:', token ? 'Token exists' : 'No token');
-      console.log('Setting user:', user);
       
       setToken(token);
       setUser(user);
       
       // Small delay to ensure state is persisted before navigation
       setTimeout(() => {
-        console.log('Navigating to dashboard...');
         navigate('/dashboard', { replace: true });
       }, 100);
     } catch (err) {
@@ -192,10 +188,21 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-[#6B7280] uppercase tracking-wider mb-2">Work Email</label>
-                <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  placeholder="name@company.com"
-                  className="w-full bg-[#F5F6F8] border border-[#E5E7EB] focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/10 text-[#111827] placeholder-[#D1D5DB] rounded-xl px-4 py-3.5 text-sm outline-none transition-all" />
+                <label className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em] ml-1 mb-2 block">Email or Employee Code</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#9CA3AF] group-focus-within:text-[#3B82F6] transition-colors">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    id="email"
+                    type="text"
+                    required
+                    className="w-full bg-[#F5F6F8] border-2 border-transparent focus:border-[#3B82F6] focus:bg-white text-[#111827] rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#9CA3AF]"
+                    placeholder="name@company.com or EMP001"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div>
@@ -210,7 +217,7 @@ export default function Login() {
                   </button>
                 </div>
                 <div className="text-right mt-2">
-                  <a href="#" className="text-xs text-[#3B82F6] hover:underline font-medium">Forgot Password?</a>
+                  <Link to="/forgot-password" title="Click to reset password" className="text-xs text-[#3B82F6] hover:underline font-medium">Forgot Password?</Link>
                 </div>
               </div>
 

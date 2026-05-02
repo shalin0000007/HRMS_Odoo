@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, FileText,
-  DollarSign, BarChart2, Settings, LogOut, Zap, X
+  DollarSign, BarChart2, Settings, LogOut, Zap, Search, Bell, X
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import Avatar from './Avatar';
+import { getAvatarUrl } from '../utils/avatar';
 
 // ==========================================
 // 1. NAVIGATION CONFIGURATION
@@ -49,67 +51,67 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      {/* Backdrop overlay for mobile */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
           onClick={onClose}
         />
       )}
 
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-[240px] bg-black flex flex-col shrink-0 transition-transform duration-300 lg:static lg:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        {/* Logo & Close Button */}
-        <div className="flex items-center justify-between gap-3 px-5 py-6">
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[240px] lg:w-[240px] bg-black flex flex-col shrink-0 transition-all duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${!isOpen ? 'lg:w-[68px]' : 'lg:w-[240px]'}`}>
+        {/* Logo */}
+        <div className="flex items-center justify-between px-4 lg:px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#3B82F6] flex items-center justify-center shrink-0 shadow-lg shadow-[#3B82F6]/30">
               <Zap size={18} className="text-white" />
             </div>
-            <span className="text-lg font-extrabold text-white tracking-tight">EmPay</span>
+            <span className={`text-lg font-extrabold text-white tracking-tight ${!isOpen ? 'lg:hidden' : 'block'}`}>EmPay</span>
           </div>
-          
           {/* Close button for mobile */}
-          <button 
-            onClick={onClose}
-            className="lg:hidden p-2 rounded-xl text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-all"
-          >
+          <button onClick={onClose} className="lg:hidden text-[#9CA3AF] hover:text-white transition">
             <X size={20} />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-0.5 overflow-y-auto">
           {visibleItems.map(({ label, icon: Icon, to }) => (
             <NavLink
               key={to}
               to={to}
               onClick={() => { if (window.innerWidth < 1024) onClose(); }}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${isActive
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
                   ? 'bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/20'
                   : 'text-[#9CA3AF] hover:text-white hover:bg-white/5'
                 }`
               }
             >
               <Icon size={18} className="shrink-0" />
-              <span className="text-[13px] font-semibold">{label}</span>
+              <span className={`text-[13px] font-semibold ${!isOpen ? 'lg:hidden' : 'block'}`}>{label}</span>
+              
+              {/* Tooltip for collapsed mode */}
+              {!isOpen && (
+                <div className="hidden lg:group-hover:block absolute left-full ml-2 px-2 py-1 bg-white text-black text-[10px] font-bold rounded shadow-xl whitespace-nowrap z-50">
+                  {label}
+                </div>
+              )}
             </NavLink>
           ))}
         </nav>
 
         {/* User footer */}
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-white font-bold text-sm shrink-0 border-2 border-white/10">
-              {initials}
+        <div className="p-3 lg:p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
+              <Avatar user={user} className="w-full h-full" />
             </div>
-            <div className="overflow-hidden">
+            <div className={`overflow-hidden ${!isOpen ? 'lg:hidden' : 'block'}`}>
               <p className="text-sm font-semibold text-white truncate">
                 {user?.firstName ? `${user.firstName} ${user.lastName}` : 'User'}
               </p>
-              <span className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">
+              <span className="text-[10px] font-medium text-[#9CA3AF]">
                 {roleLabel[userRole]}
               </span>
             </div>
@@ -117,10 +119,10 @@ export default function Sidebar({ isOpen, onClose }) {
           <button
             onClick={handleLogout}
             id="logout-btn"
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-[#6B7280] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all text-sm font-bold"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[#6B7280] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all text-sm font-medium"
           >
             <LogOut size={16} />
-            <span>Sign Out</span>
+            <span className={`${!isOpen ? 'lg:hidden' : 'block'}`}>Sign Out</span>
           </button>
         </div>
       </aside>

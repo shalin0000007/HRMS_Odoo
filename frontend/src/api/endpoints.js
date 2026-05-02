@@ -9,6 +9,10 @@ export const authAPI = {
   verifyEmail:    (token) => axiosInstance.get('/auth/verify-email', { params: { token } }),
   // Resends verification email
   resendVerification: (data) => axiosInstance.post('/auth/resend-verification', data),
+  // Sends email to request password reset
+  forgotPassword: (data) => axiosInstance.post('/auth/forgot-password', data),
+  // Resets password using token and new password
+  resetPassword:  (data) => axiosInstance.post('/auth/reset-password', data),
   // Sends email and password to backend, returns JWT token on success
   login:          (data)  => axiosInstance.post('/auth/login', data),
   // Validates the current JWT token and returns the user's profile

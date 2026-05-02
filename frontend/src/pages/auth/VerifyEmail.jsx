@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2, Mail, ArrowRight } from 'lucide-react';
 import { authAPI } from '../../api/endpoints';
@@ -12,14 +12,18 @@ export default function VerifyEmail() {
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const calledOnce = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setMessage('No verification token provided. Please check your email link.');
+    if (!token || calledOnce.current) {
+      if (!token) {
+        setStatus('error');
+        setMessage('No verification token provided. Please check your email link.');
+      }
       return;
     }
 
+    calledOnce.current = true;
     verifyToken();
   }, [token]);
 

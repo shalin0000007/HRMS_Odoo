@@ -1,67 +1,39 @@
 /**
- * EmPay — Multer Upload Middleware
- *
- * PROFILE PICTURE STORAGE STRATEGY (Engineer A's decision):
- * ─────────────────────────────────────────────────────────
- * Files are stored on the LOCAL filesystem under:
- *   backend/uploads/avatars/<uuid>.<ext>
- *
- * The RELATIVE path (e.g. "/uploads/avatars/abc123.jpg") is saved
- * in the `employee_profiles.avatarUrl` column in PostgreSQL.
- *
- * The Express app serves the /uploads folder as static files:
- *   GET http://localhost:5000/uploads/avatars/abc123.jpg
- *
- * WHY NOT DATABASE BLOBs?
- *   Storing raw binary in PostgreSQL bloats the DB, makes queries
- *   slower, and causes memory spikes during reads. Filesystem is
- *   the standard approach even at production scale (or CDN for prod).
- *
- * WHY NOT CLOUDINARY/S3?
- *   Zero external account setup needed for a 24-hour hackathon.
- *   Switch to S3/Cloudinary in production by just changing this file.
- *
- * Constraints:
- *   - Max file size: 2 MB
- *   - Allowed MIME types: image/jpeg, image/png, image/webp
- *   - Old file is deleted when a new avatar is uploaded
+ * EmPay — Cloudinary Upload Middleware
+ * 
+ * We use Cloudinary to store profile pictures.
+ * This ensures files persist even when the app is deployed to 
+ * ephemeral platforms like Render, Heroku, or Vercel.
  */
 
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(__dirname, '../../uploads/avatars');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+// Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
-  filename: (_req, file, cb) => {
-    const ext      = path.extname(file.originalname).toLowerCase();
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'empay-avatars',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 500, height: 500, crop: 'limit' }],
+    public_id: (req, file) => {
+      // Use employee ID in the filename for better organization
+      const id = req.params.id || 'anonymous';
+      return `avatar-${id}-${Date.now()}`;
+    },
   },
 });
 
-const fileFilter = (_req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only JPEG, PNG, and WebP images are allowed.'), false);
-  }
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
 module.exports = upload;

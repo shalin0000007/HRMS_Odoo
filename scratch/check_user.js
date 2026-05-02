@@ -1,9 +1,16 @@
 const prisma = require('../src/prismaClient');
 
-async function check() {
+async function main() {
   try {
     const user = await prisma.user.findFirst({
-      orderBy: { createdAt: 'desc' }
+      where: { email: { contains: 'shalin' } },
+      include: {
+        profile: {
+          include: {
+            leaveBalances: true
+          }
+        }
+      }
     });
     console.log(JSON.stringify(user, null, 2));
   } catch (e) {
@@ -13,4 +20,4 @@ async function check() {
   }
 }
 
-check();
+main();

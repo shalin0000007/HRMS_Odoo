@@ -300,8 +300,6 @@ async function uploadAvatar(req, res, next) {
 
     // Only self OR admin/HR can upload
     if (req.user.role === 'employee' && req.user.sub !== id) {
-      // Delete the uploaded file since we won't use it
-      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
@@ -309,14 +307,8 @@ async function uploadAvatar(req, res, next) {
       return res.status(400).json({ success: false, message: 'No image file provided.' });
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-    // Delete old avatar from disk if it exists
-    const existing = await prisma.employeeProfile.findUnique({ where: { userId: id } });
-    if (existing?.avatarUrl) {
-      const oldPath = path.join(__dirname, '../../../', existing.avatarUrl);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
+    // req.file.path now contains the Cloudinary SECURE URL
+    const avatarUrl = req.file.path;
 
     const profile = await prisma.employeeProfile.update({
       where: { userId: id },
@@ -329,10 +321,31 @@ async function uploadAvatar(req, res, next) {
       data: { avatarUrl: profile.avatarUrl },
     });
   } catch (err) {
-    // Clean up uploaded file on error
-    if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch (_) {}
+    next(err);
+  }
+}
+
+async function logActivity(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { action, detail } = req.body;
+
+    if (!action || !detail) {
+      return res.status(400).json({ success: false, message: 'Action and detail are required.' });
     }
+
+    const log = await prisma.auditLog.create({
+      data: {
+        actorId: req.user.sub,
+        entity: 'employee_activity',
+        entityId: id,
+        action: action, // e.g. "CLIENT_MEETING"
+        afterValue: { detail },
+      },
+    });
+
+    res.json({ success: true, message: 'Activity logged successfully.', data: log });
+  } catch (err) {
     next(err);
   }
 }
@@ -351,4 +364,5 @@ module.exports = {
   getSalary,
   updateSalary,
   uploadAvatar,
+  logActivity,
 };

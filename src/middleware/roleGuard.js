@@ -23,7 +23,7 @@ const roleGuard = (allowedRoles) => {
 
 // Pre-defined role combinations for convenience
 roleGuard.ADMIN_ONLY       = roleGuard(['admin']);
-roleGuard.ADMIN_HR         = roleGuard(['admin', 'hr_officer']);
+roleGuard.ADMIN_HR         = roleGuard(['admin', 'hr_officer', 'payroll_officer']);
 roleGuard.ADMIN_PAYROLL    = roleGuard(['admin', 'payroll_officer']);
 roleGuard.ALL_STAFF        = roleGuard(['admin', 'hr_officer', 'payroll_officer', 'employee']);
 roleGuard.MANAGEMENT       = roleGuard(['admin', 'hr_officer', 'payroll_officer']);

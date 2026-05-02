@@ -20,10 +20,16 @@ const useAuthStore = create(
       isAuthenticated: () => !!get().token,
 
       /** Helper: is the current user admin or hr_officer? */
-      isAdmin: () => ['admin'].includes(get().user?.role),
+      isAdmin: () => {
+        const role = get().user?.role?.toLowerCase();
+        return ['admin', 'hr_officer'].includes(role);
+      },
 
       /** Helper: is the current user management-level? */
-      isManagement: () => ['admin'].includes(get().user?.role),
+      isManagement: () => {
+        const role = get().user?.role?.toLowerCase();
+        return ['admin', 'hr_officer', 'payroll_officer'].includes(role);
+      },
     }),
     {
       name: 'auth-storage',

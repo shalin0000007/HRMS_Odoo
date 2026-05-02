@@ -4,7 +4,7 @@ import AppLayout from '../../components/AppLayout';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 import { SkeletonCard } from '../../components/Skeleton';
-import { Plus, CheckCircle, XCircle, ChevronDown, ChevronUp, FileText, Info, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, ChevronDown, ChevronUp, FileText, Info, AlertTriangle, Download } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { leavesAPI } from '../../api/endpoints';
 
@@ -104,20 +104,36 @@ export default function Leaves() {
 
   return (
     <AppLayout>
-      <div className="bg-black px-6 lg:px-8 pt-6 pb-5">
+      <style>{`
+        @media print {
+          nav, aside, button, header, .no-print { display: none !important; }
+          .print-area { margin: 0; padding: 20px !important; background: white !important; }
+          .bg-black { background: white !important; padding: 0 !important; }
+          .text-white { color: #111827 !important; }
+          .card-shadow { box-shadow: none !important; border: 1px solid #E5E7EB; }
+        }
+      `}</style>
+
+      <div className="bg-black px-6 lg:px-8 pt-6 pb-5 no-print">
         <div className="flex items-center justify-between flex-wrap gap-4 animate-fade-in-up">
           <div>
             <h1 className="text-3xl font-extrabold text-white">Leave Management</h1>
             <p className="text-[#9CA3AF] text-sm mt-1">Track time off and manage requests</p>
           </div>
-          <button onClick={() => setShowApplyModal(true)}
-            className="flex items-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold px-5 py-2.5 rounded-full text-sm shadow-lg shadow-[#3B82F6]/25 transition-all">
-            <Plus size={15} /> Apply Leave
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => window.print()} 
+              className="flex items-center gap-2 border border-white/20 text-white/80 hover:text-white hover:border-white/40 px-4 py-2 rounded-full text-xs font-semibold transition-all">
+              <Download size={13} /> Export PDF
+            </button>
+            <button onClick={() => setShowApplyModal(true)}
+              className="flex items-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold px-5 py-2.5 rounded-full text-sm shadow-lg shadow-[#3B82F6]/25 transition-all">
+              <Plus size={15} /> Apply Leave
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="p-6 lg:p-8 space-y-5">
+      <div className="p-6 lg:p-8 space-y-5 print-area">
         {/* Balance cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {balanceCards.map((lt, i) => (
