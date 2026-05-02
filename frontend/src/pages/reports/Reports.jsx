@@ -5,6 +5,11 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 
+// ==========================================
+// 1. ANALYTICS DATA (DEMO)
+// ==========================================
+// These datasets are currently static for the presentation demo.
+// They illustrate workforce patterns like Payroll Trends, Attendance, and Department Distribution.
 const payrollTrend = [
   { month: 'Jan', amount: 195000 }, { month: 'Feb', amount: 200000 },
   { month: 'Mar', amount: 214000 }, { month: 'Apr', amount: 237000 },
@@ -19,16 +24,16 @@ const attendanceTrend = [
 
 const leaveData = [
   { type: 'Casual', used: 8, total: 10 },
-  { type: 'Sick',   used: 3, total: 12 },
+  { type: 'Sick', used: 3, total: 12 },
   { type: 'Unpaid', used: 2, total: 5 },
 ];
 
 const deptStrength = [
   { name: 'Engineering', value: 18, color: '#3B82F6' },
-  { name: 'Sales',       value: 12, color: '#10B981' },
-  { name: 'HR',          value: 8,  color: '#EC4899' },
-  { name: 'Finance',     value: 6,  color: '#F59E0B' },
-  { name: 'Product',     value: 6,  color: '#8B5CF6' },
+  { name: 'Sales', value: 12, color: '#10B981' },
+  { name: 'HR', value: 8, color: '#EC4899' },
+  { name: 'Finance', value: 6, color: '#F59E0B' },
+  { name: 'Product', value: 6, color: '#8B5CF6' },
 ];
 
 const lateArrivals = [
@@ -60,14 +65,15 @@ export default function Reports() {
         </div>
       </div>
 
+
       <div className="p-6 lg:p-8 space-y-5">
         {/* Quick stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Employees', value: '50',     icon: Users,     color: '#3B82F6' },
-            { label: 'Avg Attendance',  value: '94.2%',  icon: Calendar,  color: '#10B981' },
-            { label: 'Monthly Payroll', value: '₹2.37L', icon: DollarSign,color: '#F59E0B' },
-            { label: 'Late Arrivals',   value: '14/mo',  icon: Clock,     color: '#EC4899' },
+            { label: 'Total Employees', value: '50', icon: Users, color: '#3B82F6' },
+            { label: 'Avg Attendance', value: '94.2%', icon: Calendar, color: '#10B981' },
+            { label: 'Monthly Payroll', value: '₹2.37L', icon: DollarSign, color: '#F59E0B' },
+            { label: 'Late Arrivals', value: '14/mo', icon: Clock, color: '#EC4899' },
           ].map((s, i) => (
             <div key={s.label} className={`bg-white rounded-2xl card-shadow p-5 animate-fade-in-up delay-${i + 1}`}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${s.color}12` }}>
@@ -78,8 +84,13 @@ export default function Reports() {
             </div>
           ))}
         </div>
-
-        {/* Charts row 1 */}
+        <div> "print" hello</div>
+        {/* ==========================================
+            2. VISUALIZATION ROW 1: TRENDS
+            ========================================== 
+            We use AreaChart for financial growth and LineChart for percentage stability.
+            These provide high-level insights for management decision making.
+        */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Payroll trend */}
           <div className="bg-white rounded-2xl card-shadow p-6 animate-fade-in-up delay-3">
@@ -93,7 +104,7 @@ export default function Reports() {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="month" stroke="#D1D5DB" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#D1D5DB" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}K`} />
+                <YAxis stroke="#D1D5DB" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v / 1000).toFixed(0)}K`} />
                 <Tooltip content={<Tip />} />
                 <Area type="monotone" dataKey="amount" stroke="#3B82F6" strokeWidth={2} fill="url(#payGrad)" />
               </AreaChart>
@@ -159,6 +170,12 @@ export default function Reports() {
             </div>
           </div>
 
+          {/* ==========================================
+              3. VISUALIZATION ROW 2: DETAILED STATS
+              ========================================== 
+              Bar charts and Pie charts are used to show structural data like 
+              Leave consumption and Department-wise headcount.
+          */}
           {/* Late arrivals */}
           <div className="bg-white rounded-2xl card-shadow p-6 animate-fade-in-up delay-6">
             <h3 className="font-bold text-[#111827] text-sm mb-4">Late Arrivals / Week</h3>

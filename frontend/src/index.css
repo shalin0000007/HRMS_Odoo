@@ -4,53 +4,59 @@
 /* ── EmPay Design Tokens — "Nexus" Theme ──────────────────────── */
 @theme {
   /* Header / Hero — black */
-  --color-hero:        #000000;
-  --color-hero-soft:   #111827;
+  --color-hero: #000000;
+  --color-hero-soft: #111827;
 
   /* Body — light grey */
-  --color-body:        #F5F6F8;
-  --color-body-alt:    #EEF0F4;
+  --color-body: #F5F6F8;
+  --color-body-alt: #EEF0F4;
 
   /* Cards — white */
-  --color-card:        #FFFFFF;
+  --color-card: #FFFFFF;
 
   /* Primary accent — blue */
-  --color-primary:     #3B82F6;
-  --color-primary-dk:  #2563EB;
-  --color-primary-lt:  #60A5FA;
-  --color-primary-bg:  rgba(59,130,246,0.08);
+  --color-primary: #3B82F6;
+  --color-primary-dk: #2563EB;
+  --color-primary-lt: #60A5FA;
+  --color-primary-bg: rgba(59, 130, 246, 0.08);
 
   /* Status */
-  --color-green:       #10B981;
-  --color-green-bg:    rgba(16,185,129,0.08);
-  --color-red:         #EF4444;
-  --color-red-bg:      rgba(239,68,68,0.08);
-  --color-amber:       #F59E0B;
-  --color-amber-bg:    rgba(245,158,11,0.08);
-  --color-purple:      #8B5CF6;
-  --color-purple-bg:   rgba(139,92,246,0.08);
-  --color-pink:        #EC4899;
-  --color-pink-bg:     rgba(236,72,153,0.08);
+  --color-green: #10B981;
+  --color-green-bg: rgba(16, 185, 129, 0.08);
+  --color-red: #EF4444;
+  --color-red-bg: rgba(239, 68, 68, 0.08);
+  --color-amber: #F59E0B;
+  --color-amber-bg: rgba(245, 158, 11, 0.08);
+  --color-purple: #8B5CF6;
+  --color-purple-bg: rgba(139, 92, 246, 0.08);
+  --color-pink: #EC4899;
+  --color-pink-bg: rgba(236, 72, 153, 0.08);
 
   /* Text */
-  --color-txt:         #111827;
-  --color-txt-sub:     #6B7280;
-  --color-txt-muted:   #9CA3AF;
-  --color-txt-white:   #FFFFFF;
+  --color-txt: #111827;
+  --color-txt-sub: #6B7280;
+  --color-txt-muted: #9CA3AF;
+  --color-txt-white: #FFFFFF;
 
   /* Borders */
-  --color-border:      #E5E7EB;
+  --color-border: #E5E7EB;
   --color-border-dark: #D1D5DB;
 
   /* Fonts */
-  --font-sans:    'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-mono:    'IBM Plex Mono', monospace;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
 
 /* ── Global Base ──────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   background-color: #F5F6F8;
@@ -58,63 +64,155 @@ body {
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
 
 /* ── Form Elements ────────────────────────────────────────────── */
-select option { background: white; color: #111827; }
+select option {
+  background: white;
+  color: #111827;
+}
 
 /* ── Animations ───────────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
+
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
+
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
+
 @keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); }
-  70%  { box-shadow: 0 0 0 10px rgba(59,130,246,0); }
-  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
 
-.animate-fade-in-up { animation: fadeInUp 0.5s ease-out both; }
-.animate-fade-in    { animation: fadeIn 0.4s ease-out both; }
-.animate-slide-in   { animation: slideInRight 0.5s ease-out both; }
-.animate-float      { animation: float 5s ease-in-out infinite; }
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out both;
+}
 
-.delay-1 { animation-delay: 0.06s; }
-.delay-2 { animation-delay: 0.12s; }
-.delay-3 { animation-delay: 0.18s; }
-.delay-4 { animation-delay: 0.24s; }
-.delay-5 { animation-delay: 0.30s; }
-.delay-6 { animation-delay: 0.36s; }
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.5s ease-out both;
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.delay-1 {
+  animation-delay: 0.06s;
+}
+
+.delay-2 {
+  animation-delay: 0.12s;
+}
+
+.delay-3 {
+  animation-delay: 0.18s;
+}
+
+.delay-4 {
+  animation-delay: 0.24s;
+}
+
+.delay-5 {
+  animation-delay: 0.30s;
+}
+
+.delay-6 {
+  animation-delay: 0.36s;
+}
 
 /* ── Card shadow ──────────────────────────────────────────────── */
 .card-shadow {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.04);
 }
+
 .card-shadow-lg {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 10px 40px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 10px 40px rgba(0, 0, 0, 0.06);
 }
 
 /* ── Print ────────────────────────────────────────────────────── */
 @media print {
-  body { background: white !important; }
-  aside, header, footer, nav { display: none !important; }
+  body {
+    background: white !important;
+  }
+
+  aside,
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
 }

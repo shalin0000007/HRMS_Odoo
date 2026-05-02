@@ -1,4 +1,9 @@
 export default function Badge({ status }) {
+  // ==========================================
+  // 1. DYNAMIC COLOR MAPPING
+  // ==========================================
+  // This object maps backend status strings (like 'approved', 'rejected') 
+  // to specific Tailwind CSS classes for background, text, and border colors.
   const styles = {
     approved:  'bg-[#10B981]/8  text-[#10B981] border-[#10B981]/15',
     rejected:  'bg-[#EF4444]/8  text-[#EF4444] border-[#EF4444]/15',
@@ -17,6 +22,7 @@ export default function Badge({ status }) {
     full_time: 'bg-[#3B82F6]/8  text-[#3B82F6] border-[#3B82F6]/15',
   };
 
+  // Format the label (e.g. 'half_day' becomes 'half day')
   const label = status?.replace('_', ' ');
   const cls = styles[status?.toLowerCase()] || 'bg-[#9CA3AF]/8 text-[#9CA3AF] border-[#9CA3AF]/15';
 

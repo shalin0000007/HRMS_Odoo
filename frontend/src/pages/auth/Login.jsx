@@ -5,35 +5,100 @@ import useAuthStore from '../../store/authStore';
 import { authAPI } from '../../api/endpoints';
 
 const DEMO_USERS = [
-  { role: 'admin',           firstName: 'Admin',  lastName: 'User',      email: 'admin@empay.in',    loginId: 'OIADUS20220001', label: 'Admin',       color: 'bg-[#3B82F6]' },
-  { role: 'hr_officer',      firstName: 'Priya',  lastName: 'Nair',      email: 'priya@empay.in',    loginId: 'OIPRNA20230001', label: 'HR Officer',  color: 'bg-[#10B981]' },
-  { role: 'payroll_officer', firstName: 'Raj',    lastName: 'Mehta',     email: 'raj@empay.in',      loginId: 'OIRAME20230002', label: 'Payroll',     color: 'bg-[#F59E0B]' },
-  { role: 'employee',        firstName: 'Alice',  lastName: 'Fernandes', email: 'alice@empay.in',    loginId: 'OIALEN20220001', label: 'Employee',    color: 'bg-[#8B5CF6]' },
+  { role: 'admin',           email: 'admin@empay.dev',   password: 'Admin@123',   label: 'Admin',       color: 'bg-[#3B82F6]' },
+  { role: 'hr_officer',      email: 'hr@empay.dev',      password: 'Hr@123',      label: 'HR Officer',  color: 'bg-[#10B981]' },
+  { role: 'payroll_officer', email: 'payroll@empay.dev', password: 'Payroll@123', label: 'Payroll',     color: 'bg-[#F59E0B]' },
+  { role: 'employee',        email: 'alice@empay.dev',   password: 'Alice@123',   label: 'Employee',    color: 'bg-[#8B5CF6]' },
 ];
 
 export default function Login() {
+  // ==========================================
+  // 1. STATE MANAGEMENT
+  // ==========================================
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resending, setResending] = useState(false);
+  
   const navigate                = useNavigate();
   const { setUser, setToken }   = useAuthStore();
 
-  const handleDemoLogin = (u) => {
-    setToken('demo-jwt-' + u.role);
-    setUser(u);
-    navigate('/dashboard');
+  // ==========================================
+  // 2. DEMO LOGIN HANDLER (For Presentation)
+  // ==========================================
+  // This bypasses typing the email/password manually and automatically submits the request.
+  const handleDemoLogin = async (u) => {
+    setEmail(u.email);
+    setPassword(u.password);
+    setLoading(true); setError(''); setNeedsVerification(false);
+    console.log('Demo login attempt:', u.email);
+    try {
+      // Calls the backend /api/auth/login route
+      const res = await authAPI.login({ email: u.email, password: u.password });
+      console.log('Login success - response:', res.data);
+      
+      // Store token and user data
+      const { token, user } = res.data;
+      console.log('Setting token:', token ? 'Token exists' : 'No token');
+      console.log('Setting user:', user);
+      
+      setToken(token);
+      setUser(user);
+      
+      // Small delay to ensure state is persisted before navigation
+      setTimeout(() => {
+        console.log('Navigating to dashboard...');
+        navigate('/dashboard', { replace: true });
+      }, 100);
+    } catch (err) {
+      console.error('Login error:', err.response?.data || err.message);
+      const errorData = err.response?.data;
+      if (errorData?.needsVerification) {
+        setNeedsVerification(true);
+        setError(errorData.message || 'Please verify your email before logging in.');
+      } else {
+        setError(errorData?.message || 'Backend not connected or invalid credentials.');
+      }
+    } finally { setLoading(false); }
   };
 
+  // ==========================================
+  // 3. STANDARD LOGIN HANDLER
+  // ==========================================
   const handleSubmit = async (e) => {
-    e.preventDefault(); setLoading(true); setError('');
+    e.preventDefault(); setLoading(true); setError(''); setNeedsVerification(false);
     try {
       const res = await authAPI.login({ email, password });
       setToken(res.data.token); setUser(res.data.user); navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Backend not connected — use Quick Access below ↓');
+      const errorData = err.response?.data;
+      if (errorData?.needsVerification) {
+        setNeedsVerification(true);
+        setError(errorData.message || 'Please verify your email before logging in.');
+      } else {
+        setError(errorData?.message || 'Backend not connected — use Quick Access below ↓');
+      }
     } finally { setLoading(false); }
+  };
+
+  // ==========================================
+  // 4. RESEND VERIFICATION HANDLER
+  // ==========================================
+  const handleResendVerification = async () => {
+    if (!email) return;
+    setResending(true);
+    try {
+      await authAPI.resendVerification({ email });
+      setError('Verification email sent! Please check your inbox.');
+      setNeedsVerification(false);
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -111,8 +176,17 @@ export default function Login() {
             <p className="text-[#9CA3AF] text-sm mb-8">Sign in to your EmPay workspace</p>
 
             {error && (
-              <div className="mb-5 px-4 py-3 bg-[#EF4444]/8 border border-[#EF4444]/15 rounded-xl text-[#EF4444] text-sm font-medium">
-                {error}
+              <div className={`mb-5 px-4 py-3 rounded-xl text-sm font-medium ${needsVerification ? 'bg-[#F59E0B]/8 border border-[#F59E0B]/15 text-[#F59E0B]' : 'bg-[#EF4444]/8 border border-[#EF4444]/15 text-[#EF4444]'}`}>
+                <p>{error}</p>
+                {needsVerification && (
+                  <button
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="mt-2 text-[#3B82F6] hover:text-[#2563EB] font-semibold text-xs underline disabled:opacity-50"
+                  >
+                    {resending ? 'Sending...' : 'Resend verification email'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -155,7 +229,7 @@ export default function Login() {
               <p className="text-center text-xs text-[#D1D5DB] mb-3 uppercase tracking-widest font-semibold">Quick Demo Access</p>
               <div className="grid grid-cols-2 gap-2">
                 {DEMO_USERS.map(u => (
-                  <button key={u.role} onClick={() => handleDemoLogin(u)} id={`demo-${u.role}`}
+                  <button key={u.role} type="button" onClick={(e) => { e.preventDefault(); handleDemoLogin(u); }} id={`demo-${u.role}`}
                     className={`${u.color} hover:opacity-90 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition-all hover:scale-[1.02] shadow-sm`}>
                     {u.label}
                   </button>

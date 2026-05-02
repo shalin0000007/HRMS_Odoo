@@ -1,79 +1,106 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { pdf } from '@react-pdf/renderer';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { payrollAPI } from '../../api/endpoints';
 import AppLayout from '../../components/AppLayout';
 import Badge from '../../components/Badge';
-import PayslipPDF from '../../components/PayslipPDF';
-import { ArrowLeft, Printer, CheckCircle, DollarSign, X, Download, FileDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Download, FileDown, Loader2 } from 'lucide-react';
 
-const EMPLOYEES_PAY = [
-  { id: 1, name: 'Alice Fernandes', dept: 'Engineering', wage: 50000 },
-  { id: 2, name: 'Bob Sharma',      dept: 'Sales',       wage: 60000 },
-  { id: 3, name: 'Priya Nair',      dept: 'HR',          wage: 45000 },
-  { id: 4, name: 'Raj Mehta',       dept: 'Finance',     wage: 42000 },
-  { id: 5, name: 'Sara Khan',       dept: 'Product',     wage: 55000 },
-];
+const fmt = (n) => '₹' + Math.round(Number(n)).toLocaleString('en-IN');
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-const calcPayslip = (wage) => {
-  const basic = wage * 0.5, hra = basic * 0.5, stdAllow = wage * 0.1, lta = wage * 0.05;
-  const fixed = wage - basic - hra - stdAllow - lta;
-  const grossEarnings = wage;
-  const pf = basic * 0.12, profTax = 200, totalDeductions = pf + profTax;
-  return { basic, hra, stdAllow, lta, fixed: Math.max(fixed, 0), grossEarnings, pf, profTax, totalDeductions, net: grossEarnings - totalDeductions };
-};
-
-const fmt = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
-const MONTH = 'April 2025';
-
-/* ── PDF Download Helper ───────────────────────────────────────── */
-async function downloadPayslip(employee, payslip) {
-  const blob = await pdf(
-    <PayslipPDF employee={employee} payslip={payslip} month={MONTH} />
-  ).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Payslip_${employee.name.replace(/\s+/g, '_')}_${MONTH.replace(/\s+/g, '_')}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-async function downloadAllPayslips(payslips) {
-  for (const p of payslips) {
-    await downloadPayslip(p, p);
-    // Small delay between downloads so browser doesn't block them
-    await new Promise(r => setTimeout(r, 400));
-  }
-}
-
-/* ── Component ─────────────────────────────────────────────────── */
 export default function PayrunDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('draft');
+  const queryClient = useQueryClient();
   const [payslipModal, setPayslipModal] = useState(null);
-  const [downloading, setDownloading] = useState(null); // employee id or 'all'
+  const [downloading, setDownloading] = useState(null);
 
-  const payslips = EMPLOYEES_PAY.map(e => ({ ...e, ...calcPayslip(e.wage) }));
-  const totalNet = payslips.reduce((s, p) => s + p.net, 0);
+  // ==========================================
+  // 1. FETCH PAYRUN DATA
+  // ==========================================
+  // We fetch all individual payslips generated for a specific month.
+  // The 'id' is passed via the URL (useParams).
+  const { data: payrunResponse, isLoading } = useQuery({
+    queryKey: ['payrun', id],
+    queryFn: async () => {
+      const res = await payrollAPI.getPayrun(id);
+      return res.data;
+    }
+  });
+
+  // ==========================================
+  // 2. FINALIZE (VALIDATE) PAYRUN
+  // ==========================================
+  // Once the admin reviews the generated payslips, they can "Validate" (finalize) them.
+  // This locks the payrun so no more changes can be made.
+  const finalizeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await payrollAPI.finalizePayrun(id);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['payrun', id]);
+      queryClient.invalidateQueries(['payruns']);
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.message || err.message;
+      alert(`Error finalizing: ${msg}`);
+    }
+  });
+
+  const payrun = payrunResponse?.data;
+  const payslips = payrun?.payslips || [];
+  const totalNet = payslips.reduce((s, p) => s + Number(p.netPay), 0);
+  const totalGross = payslips.reduce((s, p) => s + Number(p.grossSalary), 0);
+  const totalDeductions = payslips.reduce((s, p) => s + Number(p.totalDeductions), 0);
 
   const openPayslip = payslipModal ? payslips.find(p => p.id === payslipModal) : null;
 
+  // ==========================================
+  // 3. PDF GENERATION & DOWNLOAD
+  // ==========================================
+  // This calls the backend API to generate a professional PDF payslip using PDFKit.
+  // The backend returns a binary Blob, which we then trigger as a browser download.
   const handleDownloadOne = async (p) => {
     setDownloading(p.id);
-    try { await downloadPayslip(p, p); }
-    catch (err) { console.error('PDF generation failed:', err); }
-    finally { setDownloading(null); }
+    try {
+      const res = await payrollAPI.downloadPDF(p.id);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Payslip_${p.employee?.profile?.firstName || 'Emp'}_${payrun.month}_${payrun.year}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setDownloading(null);
+    }
   };
 
   const handleDownloadAll = async () => {
     setDownloading('all');
-    try { await downloadAllPayslips(payslips); }
-    catch (err) { console.error('Bulk PDF failed:', err); }
-    finally { setDownloading(null); }
+    try {
+      for (const p of payslips) {
+        await handleDownloadOne(p);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    } catch (err) {
+      console.error('Bulk PDF failed:', err);
+    } finally {
+      setDownloading(null);
+    }
   };
+
+  if (isLoading || !payrun) {
+    return (
+      <AppLayout>
+        <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-[#9CA3AF]" /></div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -84,14 +111,13 @@ export default function PayrunDetail() {
               <ArrowLeft size={16} className="text-white" />
             </button>
             <div>
-              <h1 className="text-2xl font-extrabold text-white">Payrun — {MONTH}</h1>
+              <h1 className="text-2xl font-extrabold text-white">Payrun — {MONTH_NAMES[payrun.month - 1]} {payrun.year}</h1>
               <p className="text-[#9CA3AF] text-sm mt-0.5">{payslips.length} employees · Total Net: {fmt(totalNet)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge status={status} />
+            <Badge status={payrun.status} />
 
-            {/* Download All PDFs button */}
             <button onClick={handleDownloadAll} disabled={downloading === 'all'}
               className="flex items-center gap-2 border border-white/20 text-white/80 hover:text-white hover:border-white/40 px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-50">
               {downloading === 'all'
@@ -100,10 +126,10 @@ export default function PayrunDetail() {
               }
             </button>
 
-            {status === 'draft' && (
-              <button onClick={() => setStatus('finalized')}
-                className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold px-5 py-2.5 rounded-full text-sm shadow-lg shadow-[#10B981]/25 transition-all">
-                <CheckCircle size={15} /> Validate
+            {payrun.status === 'draft' && (
+              <button onClick={() => finalizeMutation.mutate()} disabled={finalizeMutation.isPending}
+                className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold px-5 py-2.5 rounded-full text-sm shadow-lg shadow-[#10B981]/25 transition-all disabled:opacity-50">
+                {finalizeMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <><CheckCircle size={15} /> Validate</>}
               </button>
             )}
           </div>
@@ -124,44 +150,48 @@ export default function PayrunDetail() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F5F6F8]">
-              {payslips.map(p => (
-                <tr key={p.id} className="hover:bg-[#F5F6F8]/50 transition-colors">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-white text-[10px] font-bold">
-                        {p.name.split(' ').map(n => n[0]).join('')}
+              {payslips.map(p => {
+                const name = `${p.employee?.profile?.firstName || 'Unknown'} ${p.employee?.profile?.lastName || ''}`;
+                const dept = p.employee?.profile?.department || 'N/A';
+                return (
+                  <tr key={p.id} className="hover:bg-[#F5F6F8]/50 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-white text-[10px] font-bold">
+                          {name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                        </div>
+                        <span className="text-sm font-semibold text-[#111827]">{name}</span>
                       </div>
-                      <span className="text-sm font-semibold text-[#111827]">{p.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-[#6B7280] hidden md:table-cell">{p.dept}</td>
-                  <td className="px-5 py-4 text-sm text-[#111827] font-mono text-right">{fmt(p.grossEarnings)}</td>
-                  <td className="px-5 py-4 text-sm text-[#EF4444] font-mono text-right">-{fmt(p.totalDeductions)}</td>
-                  <td className="px-5 py-4 text-sm text-[#111827] font-bold font-mono text-right">{fmt(p.net)}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => setPayslipModal(p.id)}
-                        className="text-[#3B82F6] hover:underline text-xs font-semibold">
-                        View
-                      </button>
-                      <button onClick={() => handleDownloadOne(p)} disabled={downloading === p.id}
-                        className="w-7 h-7 rounded-lg bg-[#3B82F6]/8 hover:bg-[#3B82F6]/15 flex items-center justify-center transition-colors disabled:opacity-50"
-                        title="Download PDF">
-                        {downloading === p.id
-                          ? <Loader2 size={12} className="text-[#3B82F6] animate-spin" />
-                          : <Download size={12} className="text-[#3B82F6]" />
-                        }
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-[#6B7280] hidden md:table-cell">{dept}</td>
+                    <td className="px-5 py-4 text-sm text-[#111827] font-mono text-right">{fmt(p.grossSalary)}</td>
+                    <td className="px-5 py-4 text-sm text-[#EF4444] font-mono text-right">-{fmt(p.totalDeductions)}</td>
+                    <td className="px-5 py-4 text-sm text-[#111827] font-bold font-mono text-right">{fmt(p.netPay)}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => setPayslipModal(p.id)}
+                          className="text-[#3B82F6] hover:underline text-xs font-semibold mx-1">
+                          View
+                        </button>
+                        <button onClick={() => handleDownloadOne(p)} disabled={downloading === p.id}
+                          className="w-7 h-7 rounded-lg bg-[#3B82F6]/8 hover:bg-[#3B82F6]/15 flex items-center justify-center transition-colors disabled:opacity-50"
+                          title="Download PDF">
+                          {downloading === p.id
+                            ? <Loader2 size={12} className="text-[#3B82F6] animate-spin" />
+                            : <Download size={12} className="text-[#3B82F6]" />
+                          }
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-[#F5F6F8] border-t border-[#E5E7EB]">
                 <td className="px-5 py-3 font-bold text-sm text-[#111827]" colSpan={2}>Total</td>
-                <td className="px-5 py-3 font-bold text-sm text-[#111827] font-mono text-right">{fmt(payslips.reduce((s, p) => s + p.grossEarnings, 0))}</td>
-                <td className="px-5 py-3 font-bold text-sm text-[#EF4444] font-mono text-right">-{fmt(payslips.reduce((s, p) => s + p.totalDeductions, 0))}</td>
+                <td className="px-5 py-3 font-bold text-sm text-[#111827] font-mono text-right">{fmt(totalGross)}</td>
+                <td className="px-5 py-3 font-bold text-sm text-[#EF4444] font-mono text-right">-{fmt(totalDeductions)}</td>
                 <td className="px-5 py-3 font-bold text-sm text-[#111827] font-mono text-right">{fmt(totalNet)}</td>
                 <td></td>
               </tr>
@@ -174,35 +204,20 @@ export default function PayrunDetail() {
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setPayslipModal(null)}>
             <div className="bg-white rounded-2xl card-shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
-                <h3 className="text-lg font-extrabold text-[#111827]">Payslip — {openPayslip.name}</h3>
+                <h3 className="text-lg font-extrabold text-[#111827]">Payslip</h3>
                 <div className="flex items-center gap-2">
-                  {/* PDF Download from modal */}
-                  <button onClick={() => handleDownloadOne(openPayslip)}
-                    disabled={downloading === openPayslip.id}
-                    className="w-8 h-8 rounded-lg bg-[#3B82F6]/8 hover:bg-[#3B82F6]/15 flex items-center justify-center transition-colors"
-                    title="Download PDF">
-                    {downloading === openPayslip.id
-                      ? <Loader2 size={14} className="text-[#3B82F6] animate-spin" />
-                      : <Download size={14} className="text-[#3B82F6]" />
-                    }
-                  </button>
-                  <button onClick={() => window.print()} className="w-8 h-8 rounded-lg bg-[#F5F6F8] hover:bg-[#E5E7EB] flex items-center justify-center transition-colors">
-                    <Printer size={14} className="text-[#6B7280]" />
-                  </button>
-                  <button onClick={() => setPayslipModal(null)} className="w-8 h-8 rounded-lg bg-[#F5F6F8] hover:bg-[#E5E7EB] flex items-center justify-center transition-colors">
-                    <X size={14} className="text-[#6B7280]" />
-                  </button>
+                  <button onClick={() => setPayslipModal(null)} className="text-[#9CA3AF] hover:text-[#111827] transition">✕</button>
                 </div>
               </div>
               <div className="p-6 space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#F5F6F8] rounded-xl p-4">
                     <p className="text-[10px] text-[#9CA3AF] uppercase tracking-widest">Department</p>
-                    <p className="text-sm font-semibold text-[#111827] mt-1">{openPayslip.dept}</p>
+                    <p className="text-sm font-semibold text-[#111827] mt-1">{openPayslip.employee?.profile?.department || 'N/A'}</p>
                   </div>
                   <div className="bg-[#F5F6F8] rounded-xl p-4">
                     <p className="text-[10px] text-[#9CA3AF] uppercase tracking-widest">Month</p>
-                    <p className="text-sm font-semibold text-[#111827] mt-1">{MONTH}</p>
+                    <p className="text-sm font-semibold text-[#111827] mt-1">{MONTH_NAMES[payrun.month - 1]} {payrun.year}</p>
                   </div>
                 </div>
 
@@ -210,11 +225,9 @@ export default function PayrunDetail() {
                   <h4 className="text-xs font-bold text-[#10B981] uppercase tracking-widest mb-3">Earnings</h4>
                   <div className="space-y-2">
                     {[
-                      ['Basic Salary', openPayslip.basic],
+                      ['Basic Salary', openPayslip.basicSalary],
                       ['HRA', openPayslip.hra],
-                      ['Standard Allowance', openPayslip.stdAllow],
-                      ['LTA', openPayslip.lta],
-                      ['Fixed Allowance', openPayslip.fixed],
+                      ['Special Allowance', openPayslip.specialAllow],
                     ].map(([label, val]) => (
                       <div key={label} className="flex justify-between text-sm">
                         <span className="text-[#6B7280]">{label}</span>
@@ -223,7 +236,7 @@ export default function PayrunDetail() {
                     ))}
                     <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#E5E7EB]">
                       <span className="text-[#111827]">Total Gross</span>
-                      <span className="font-mono text-[#111827]">{fmt(openPayslip.grossEarnings)}</span>
+                      <span className="font-mono text-[#111827]">{fmt(openPayslip.grossSalary)}</span>
                     </div>
                   </div>
                 </div>
@@ -232,8 +245,9 @@ export default function PayrunDetail() {
                   <h4 className="text-xs font-bold text-[#EF4444] uppercase tracking-widest mb-3">Deductions</h4>
                   <div className="space-y-2">
                     {[
-                      ['Provident Fund (12%)', openPayslip.pf],
-                      ['Professional Tax', openPayslip.profTax],
+                      ['Provident Fund (12%)', openPayslip.pfDeduction],
+                      ['Professional Tax', openPayslip.ptDeduction],
+                      ['Loss of Pay', openPayslip.lopDeduction],
                     ].map(([label, val]) => (
                       <div key={label} className="flex justify-between text-sm">
                         <span className="text-[#6B7280]">{label}</span>
@@ -249,18 +263,8 @@ export default function PayrunDetail() {
 
                 <div className="bg-[#3B82F6]/8 border border-[#3B82F6]/15 rounded-xl p-4 flex justify-between items-center">
                   <span className="font-bold text-[#3B82F6] text-sm">NET PAY</span>
-                  <span className="text-2xl font-extrabold text-[#3B82F6] font-mono">{fmt(openPayslip.net)}</span>
+                  <span className="text-2xl font-extrabold text-[#3B82F6] font-mono">{fmt(openPayslip.netPay)}</span>
                 </div>
-
-                {/* Download button inside modal */}
-                <button onClick={() => handleDownloadOne(openPayslip)}
-                  disabled={downloading === openPayslip.id}
-                  className="w-full bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold py-3 rounded-full text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#3B82F6]/25 transition-all disabled:opacity-50">
-                  {downloading === openPayslip.id
-                    ? <><Loader2 size={15} className="animate-spin" /> Generating PDF...</>
-                    : <><Download size={15} /> Download Payslip PDF</>
-                  }
-                </button>
               </div>
             </div>
           </div>

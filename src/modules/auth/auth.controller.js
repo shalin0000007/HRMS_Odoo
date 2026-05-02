@@ -1,11 +1,12 @@
 /**
  * EmPay — Auth Service
- * login, me (profile), changePassword
+ * login, register, verifyEmail, resendVerification, me (profile), changePassword
  */
 
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const prisma   = require('../../prismaClient');
+const bcrypt       = require('bcryptjs');
+const jwt          = require('jsonwebtoken');
+const prisma       = require('../../prismaClient');
+const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('../../utils/emailService');
 
 /**
  * POST /api/auth/login
@@ -25,6 +26,16 @@ async function login(req, res, next) {
 
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Please verify your email before logging in.',
+        needsVerification: true,
+        email: user.email 
+      });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -117,9 +128,268 @@ async function changePassword(req, res, next) {
   }
 }
 
+/**
+ * POST /api/auth/register
+ * Register new employee with email verification
+ */
+async function register(req, res, next) {
+  try {
+    const {
+      email, password,
+      firstName, lastName, phone, department, designation,
+      employeeCode, joiningDate, gender = 'other',
+      ctcAnnual, basicPct = 40, hraPct = 50,
+      pfEnabled = true, esicEnabled = false, state = 'Maharashtra',
+    } = req.body;
+
+    // Validation
+    if (!email || !password || !firstName || !lastName || !department || !designation || !employeeCode || !joiningDate) {
+      return res.status(400).json({ success: false, message: 'Missing required fields.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'Email already registered.' });
+    }
+
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user with unverified email
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase().trim(),
+        passwordHash,
+        role: 'employee',
+        emailVerified: false,
+        verificationToken,
+        verificationExpires,
+        profile: {
+          create: {
+            firstName,
+            lastName,
+            phone,
+            department,
+            designation,
+            employeeCode,
+            joiningDate: new Date(joiningDate),
+            gender,
+            ...(ctcAnnual && {
+              salaryStructure: {
+                create: {
+                  ctcAnnual: Number(ctcAnnual),
+                  basicPct: Number(basicPct),
+                  hraPct: Number(hraPct),
+                  pfEnabled,
+                  esicEnabled,
+                  state,
+                  effectiveFrom: new Date(joiningDate),
+                },
+              },
+            }),
+          },
+        },
+      },
+      include: {
+        profile: { include: { salaryStructure: true } },
+      },
+    });
+
+    // Create leave balances
+    if (user.profile) {
+      const year = new Date().getFullYear();
+      await prisma.leaveBalance.createMany({
+        data: [
+          { profileId: user.profile.id, leaveType: 'casual', year, totalDays: 12 },
+          { profileId: user.profile.id, leaveType: 'sick', year, totalDays: 12 },
+          { profileId: user.profile.id, leaveType: 'earned', year, totalDays: 15 },
+          { profileId: user.profile.id, leaveType: 'unpaid', year, totalDays: 999 },
+        ],
+        skipDuplicates: true,
+      });
+    }
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(user.email, verificationToken, firstName);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails, but log it
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful. Please check your email to verify your account.',
+      data: {
+        id: user.id,
+        email: user.email,
+        emailVerified: user.emailVerified,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/auth/verify-email?token=xxx
+ * Verify email address using token
+ */
+async function verifyEmail(req, res, next) {
+  try {
+    const { token } = req.query;
+    console.log('--- VERIFY EMAIL ATTEMPT ---');
+    console.log('Token received:', token);
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Verification token is required.' });
+    }
+
+    // Find user with this verification token
+    const user = await prisma.user.findFirst({
+      where: { verificationToken: token },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      // Debug: list some tokens in DB
+      const others = await prisma.user.findMany({
+        where: { emailVerified: false },
+        take: 5,
+        select: { email: true, verificationToken: true }
+      });
+      console.log('Unverified users in DB:', JSON.stringify(others, null, 2));
+    }
+
+    console.log('User found:', user ? user.email : 'NONE');
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification token.' });
+    }
+
+    // Check if token is expired
+    if (user.verificationExpires && new Date() > user.verificationExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification token has expired. Please request a new one.',
+        expired: true,
+        email: user.email,
+      });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        message: 'Email already verified. You can now log in.',
+        alreadyVerified: true,
+      });
+    }
+
+    // Update user as verified
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpires: null,
+      },
+      include: { profile: true },
+    });
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(updatedUser.email, updatedUser.profile?.firstName || 'User');
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully. You can now log in.',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/resend-verification
+ * Resend verification email
+ */
+async function resendVerification(req, res, next) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      // Don't reveal if user exists
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a verification link has been sent.',
+      });
+    }
+
+    // Already verified
+    if (user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a verification link has been sent.',
+      });
+    }
+
+    // Generate new token
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken, verificationExpires },
+    });
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(user.email, verificationToken, user.profile?.firstName || 'User');
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email. Please try again later.',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification email sent. Please check your inbox.',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 function sanitizeUser(user) {
   const { passwordHash, ...safe } = user;
   return safe;
 }
 
-module.exports = { login, getMe, changePassword };
+module.exports = { login, register, verifyEmail, resendVerification, getMe, changePassword };

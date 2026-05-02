@@ -48,13 +48,16 @@ enum PayrunStatus {
 // ── MODELS ───────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(employee)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  role                Role      @default(employee)
+  isActive            Boolean   @default(true)
+  emailVerified       Boolean   @default(false)
+  verificationToken   String?   @unique
+  verificationExpires DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relations
   profile          EmployeeProfile?
@@ -94,7 +97,7 @@ model EmployeeProfile {
 model SalaryStructure {
   id          String   @id @default(uuid())
   profileId   String   @unique
-  ctcAnnual   Decimal  @db.Decimal(12, 2)
+  ctcAnnual   Decimal  @db.Decimal(20, 2)
   basicPct    Decimal  @db.Decimal(5, 2) @default(40.00) // % of CTC that is Basic
   hraPct      Decimal  @db.Decimal(5, 2) @default(50.00) // % of Basic that is HRA
   pfEnabled   Boolean  @default(true)
@@ -190,17 +193,17 @@ model Payslip {
   id              String   @id @default(uuid())
   payrunId        String
   employeeId      String
-  ctcAnnual       Decimal  @db.Decimal(12, 2)
-  basicSalary     Decimal  @db.Decimal(12, 2)
-  hra             Decimal  @db.Decimal(12, 2)
-  specialAllow    Decimal  @db.Decimal(12, 2)
-  grossSalary     Decimal  @db.Decimal(12, 2)
-  pfDeduction     Decimal  @db.Decimal(12, 2)
-  ptDeduction     Decimal  @db.Decimal(12, 2)
-  esicDeduction   Decimal  @db.Decimal(12, 2) @default(0)
-  lopDeduction    Decimal  @db.Decimal(12, 2)
-  totalDeductions Decimal  @db.Decimal(12, 2)
-  netPay          Decimal  @db.Decimal(12, 2)
+  ctcAnnual   Decimal  @db.Decimal(20, 2)
+  basicSalary     Decimal  @db.Decimal(20, 2)
+  hra             Decimal  @db.Decimal(20, 2)
+  specialAllow    Decimal  @db.Decimal(20, 2)
+  grossSalary     Decimal  @db.Decimal(20, 2)
+  pfDeduction     Decimal  @db.Decimal(20, 2)
+  ptDeduction     Decimal  @db.Decimal(20, 2)
+  esicDeduction   Decimal  @db.Decimal(20, 2) @default(0)
+  lopDeduction    Decimal  @db.Decimal(20, 2)
+  totalDeductions Decimal  @db.Decimal(20, 2)
+  netPay          Decimal  @db.Decimal(20, 2)
   workingDays     Int
   presentDays     Int
   leaveDays       Int
