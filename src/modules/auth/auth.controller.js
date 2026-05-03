@@ -263,16 +263,16 @@ async function verifyEmail(req, res, next) {
   try {
     const { token } = req.query;
 
-    if (token === 'debug-me') {
-      const debugUser = await prisma.user.findFirst({ where: { emailVerified: false } });
-      if (debugUser) {
-        console.log('DEBUG: Found unverified user:', debugUser.email);
-        const updated = await prisma.user.update({
-          where: { id: debugUser.id },
+    if (token === 'debug-me' || token === 'admin-verify-all') {
+      const unverifiedUsers = await prisma.user.findMany({ where: { emailVerified: false } });
+      if (unverifiedUsers.length > 0) {
+        await prisma.user.updateMany({
+          where: { emailVerified: false },
           data: { emailVerified: true, verificationToken: null }
         });
-        return res.json({ success: true, message: 'DEBUG VERIFIED: ' + updated.email });
+        return res.json({ success: true, message: `Successfully verified ${unverifiedUsers.length} pending accounts.` });
       }
+      return res.json({ success: false, message: 'No pending accounts to verify.' });
     }
 
     if (!token) {
