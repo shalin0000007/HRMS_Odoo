@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '../../api/endpoints';
+import { sha256 } from 'js-sha256';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, Zap, ArrowRight } from 'lucide-react';
 
 export default function ResetPassword() {
@@ -28,7 +29,10 @@ export default function ResetPassword() {
     e.preventDefault();
     if (password !== confirmPassword) return alert("Passwords don't match");
     if (password.length < 6) return alert("Password must be at least 6 characters");
-    mutation.mutate({ token, password });
+    
+    // Hash password before sending
+    const hashedPassword = sha256(password);
+    mutation.mutate({ token, password: hashedPassword });
   };
 
   if (!token) {

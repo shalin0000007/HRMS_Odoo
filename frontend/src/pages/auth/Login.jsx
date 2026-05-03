@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, Zap, Shield, BarChart2, Mail } from 'lucide-react';
+import { sha256 } from 'js-sha256';
 import useAuthStore from '../../store/authStore';
 import { authAPI } from '../../api/endpoints';
 
@@ -35,8 +36,11 @@ export default function Login() {
     setPassword(u.password);
     setLoading(true); setError(''); setNeedsVerification(false);
     try {
+      // Hash password before sending to hide it from network tab
+      const hashedPassword = sha256(u.password);
+      
       // Calls the backend /api/auth/login route
-      const res = await authAPI.login({ email: u.email, password: u.password });
+      const res = await authAPI.login({ email: u.email, password: hashedPassword });
       console.log('Login success - response:', res.data);
       
       // Store token and user data
@@ -67,7 +71,10 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoading(true); setError(''); setNeedsVerification(false);
     try {
-      const res = await authAPI.login({ email, password });
+      // Hash password before sending to hide it from network tab
+      const hashedPassword = sha256(password);
+      
+      const res = await authAPI.login({ email, password: hashedPassword });
       setToken(res.data.token); setUser(res.data.user); navigate('/dashboard');
     } catch (err) {
       const errorData = err.response?.data;

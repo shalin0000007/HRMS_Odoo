@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Zap, Info, Loader2 } from 'lucide-react';
+import { sha256 } from 'js-sha256';
 import useAuthStore from '../../store/authStore';
 import { authAPI } from '../../api/endpoints';
 
@@ -94,6 +95,7 @@ export default function SignUp() {
       // Use generated loginId as employeeCode
       const payload = {
         ...form,
+        password: sha256(form.password),
         employeeCode: loginId,
         joiningDate: form.joiningDate || new Date().toISOString().split('T')[0],
       };

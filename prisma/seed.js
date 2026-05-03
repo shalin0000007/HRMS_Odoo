@@ -18,21 +18,23 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg }     = require('@prisma/adapter-pg');
 const { Pool }         = require('pg');
 const bcrypt           = require('bcryptjs');
+const { sha256 }       = require('js-sha256');
 
 const pool    = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma  = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Starting EmPay seed...');
+  console.log('🌱 Starting EmPay seed (with SHA-256 hashing)...');
 
   // ── 1. Create Users ────────────────────────────────────────────
+  // We apply SHA-256 to passwords before Bcrypt to match the new Frontend logic
   const hashedPasswords = {
-    admin:   await bcrypt.hash('Admin@123', 10),
-    hr:      await bcrypt.hash('Hr@123', 10),
-    payroll: await bcrypt.hash('Payroll@123', 10),
-    alice:   await bcrypt.hash('Alice@123', 10),
-    bob:     await bcrypt.hash('Bob@123', 10),
+    admin:   await bcrypt.hash(sha256('Admin@123'), 10),
+    hr:      await bcrypt.hash(sha256('Hr@123'), 10),
+    payroll: await bcrypt.hash(sha256('Payroll@123'), 10),
+    alice:   await bcrypt.hash(sha256('Alice@123'), 10),
+    bob:     await bcrypt.hash(sha256('Bob@123'), 10),
   };
 
   const admin = await prisma.user.upsert({
