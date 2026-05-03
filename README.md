@@ -487,7 +487,9 @@ empay-hrms/
 
 | Name | Role | Responsibilities |
 |---|---|---|
-| **Shalin** | Full-Stack Lead | Architecture, Backend APIs, Database Design, Frontend Development |
+| **Shalin** | Frontend & Integeration | Architecturet |
+|**Vidya ** |  Backend APIs, Database Design |
+
 
 ---
 
@@ -495,3 +497,5 @@ empay-hrms/
   <strong>Built with ❤️ for the Modern Indian Enterprise</strong><br/>
   <sub>EmPay HRMS v1.0 · 2025–2026</sub>
 </p>
+
+Video Link : https://drive.google.com/file/d/1JPtPFeDoW3O9zSC9VfP3INXmFbIuoRDq/view?usp=sharing
