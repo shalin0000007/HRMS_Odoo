@@ -77,4 +77,51 @@ async function exportLeaveReport(req, res, next) {
   }
 }
 
-module.exports = { getLeaveSummary, exportLeaveReport };
+/**
+ * GET /api/leaves/last-month/report
+ * Returns leave records specifically for the previous calendar month
+ */
+async function getLastMonthReport(req, res, next) {
+  try {
+    const now = new Date();
+    // Start of last month
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    // End of last month
+    const endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        OR: [
+          { fromDate: { gte: startDate, lte: endDate } },
+          { toDate: { gte: startDate, lte: endDate } }
+        ]
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: { firstName: true, lastName: true, employeeCode: true, department: true }
+            }
+          }
+        }
+      },
+      orderBy: { fromDate: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      meta: {
+        reportName: "Last Month Leave Report",
+        period: `${startDate.toDateString()} to ${endDate.toDateString()}`,
+        count: leaves.length
+      },
+      data: leaves
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getLeaveSummary, exportLeaveReport, getLastMonthReport };

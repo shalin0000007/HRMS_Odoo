@@ -4,8 +4,10 @@ const auth      = require('../../middleware/auth');
 const roleGuard = require('../../middleware/roleGuard');
 const c         = require('./leave.controller');
 const reportRoutes = require('./leaveReport.routes');
+const reportController = require('./leaveReport.controller');
 
 router.use('/reports', reportRoutes);
+router.get('/last-month/report', auth, roleGuard.MANAGEMENT, reportController.getLastMonthReport);
 
 router.use(auth);
 
