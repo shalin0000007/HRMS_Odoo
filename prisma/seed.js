@@ -151,7 +151,23 @@ async function main() {
     }
   }
 
-  console.log('✅ All 20 Employees seeded successfully.');
+  // 4. Create some Leave Requests for April 2026 for the report
+  console.log('📅 Adding April leave requests for the report...');
+  const dev1 = await prisma.user.findUnique({ where: { email: 'dev1@empay.dev' } });
+  const dev2 = await prisma.user.findUnique({ where: { email: 'dev2@empay.dev' } });
+  const sales1 = await prisma.user.findUnique({ where: { email: 'sales1@empay.dev' } });
+  const hr1 = await prisma.user.findUnique({ where: { email: 'hr1@empay.dev' } });
+
+  const aprilLeaves = [
+    { employeeId: dev1.id, leaveType: 'casual', fromDate: new Date('2026-04-10'), toDate: new Date('2026-04-12'), totalDays: 3, reason: 'Family function', status: 'approved' },
+    { employeeId: dev2.id, leaveType: 'sick', fromDate: new Date('2026-04-05'), toDate: new Date('2026-04-05'), totalDays: 1, reason: 'Flu', status: 'approved' },
+    { employeeId: sales1.id, leaveType: 'earned', fromDate: new Date('2026-04-20'), toDate: new Date('2026-04-25'), totalDays: 6, reason: 'Summer vacation', status: 'approved' },
+    { employeeId: hr1.id, leaveType: 'casual', fromDate: new Date('2026-04-15'), toDate: new Date('2026-04-15'), totalDays: 1, reason: 'Personal work', status: 'approved' },
+  ];
+
+  await prisma.leaveRequest.createMany({ data: aprilLeaves, skipDuplicates: true });
+
+  console.log('✅ All 20 Employees seeded successfully with April data.');
   console.log('\n🔑 Login Credentials:');
   console.log('   Email: [any]@empay.dev (e.g. admin@empay.dev, hr1@empay.dev, dev1@empay.dev)');
   console.log('   Password: Pass@123\n');

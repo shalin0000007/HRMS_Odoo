@@ -52,9 +52,22 @@ async function listEmployees(req, res, next) {
       }),
     ]);
 
+    const isSensitiveAccess = ['admin', 'hr_officer', 'payroll_officer'].includes(req.user.role);
+
     res.json({
       success: true,
-      data: employees.map(sanitize),
+      data: employees.map(u => {
+        const safe = sanitize(u);
+        // If not management, strip sensitive profile details
+        if (!isSensitiveAccess) {
+          if (safe.profile) {
+            delete safe.profile.salaryStructure;
+            delete safe.profile.phone;
+            delete safe.profile.address;
+          }
+        }
+        return safe;
+      }),
       pagination: {
         total,
         page: Number(page),
@@ -178,9 +191,22 @@ async function updateEmployee(req, res, next) {
     const { id } = req.params;
     const { firstName, lastName, phone, department, designation, gender } = req.body;
 
+    // Only self OR admin/HR can update
+    const isManagement = ['admin', 'hr_officer'].includes(req.user.role);
+    if (!isManagement && req.user.sub !== id) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only update your own profile.' });
+    }
+
+    // Employees cannot change their own department or designation (HR only)
+    const updateData = { firstName, lastName, phone, gender };
+    if (isManagement) {
+      updateData.department = department;
+      updateData.designation = designation;
+    }
+
     const profile = await prisma.employeeProfile.update({
       where: { userId: id },
-      data:  { firstName, lastName, phone, department, designation, gender },
+      data:  updateData,
     });
 
     res.json({ success: true, data: profile });

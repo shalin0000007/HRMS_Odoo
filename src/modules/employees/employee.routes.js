@@ -8,8 +8,8 @@ const c          = require('./employee.controller');
 // All employee routes require authentication
 router.use(auth);
 
-// GET  /api/employees           — admin, hr_officer, payroll_officer
-router.get('/',    roleGuard.MANAGEMENT, c.listEmployees);
+// GET  /api/employees           — all staff (Directory access)
+router.get('/',    roleGuard.ALL_STAFF, c.listEmployees);
 
 // GET  /api/employees/:id       — management OR self
 router.get('/:id', roleGuard.ALL_STAFF, c.getEmployee);
@@ -17,8 +17,8 @@ router.get('/:id', roleGuard.ALL_STAFF, c.getEmployee);
 // POST /api/employees           — admin, hr_officer
 router.post('/',   roleGuard.ADMIN_HR, c.createEmployee);
 
-// PUT  /api/employees/:id       — admin, hr_officer
-router.put('/:id', roleGuard.ADMIN_HR, c.updateEmployee);
+// PUT  /api/employees/:id       — admin, hr_officer OR self
+router.put('/:id', roleGuard.ALL_STAFF, c.updateEmployee);
 
 // DELETE /api/employees/:id     — admin only (soft delete)
 router.delete('/:id', roleGuard.ADMIN_ONLY, c.deactivateEmployee);
