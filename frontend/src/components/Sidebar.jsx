@@ -59,14 +59,14 @@ export default function Sidebar({ isOpen, onClose }) {
         />
       )}
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[240px] lg:w-[240px] bg-black flex flex-col shrink-0 transition-all duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${!isOpen ? 'lg:w-[68px]' : 'lg:w-[240px]'}`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[240px] bg-black flex flex-col shrink-0 transition-all duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         {/* Logo */}
         <div className="flex items-center justify-between px-4 lg:px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#3B82F6] flex items-center justify-center shrink-0 shadow-lg shadow-[#3B82F6]/30">
               <Zap size={18} className="text-white" />
             </div>
-            <span className={`text-lg font-extrabold text-white tracking-tight ${!isOpen ? 'lg:hidden' : 'block'}`}>EmPay</span>
+            <span className={`text-lg font-extrabold text-white tracking-tight ${!isOpen ? 'hidden lg:block' : 'block'}`}>EmPay</span>
           </div>
           {/* Close button for mobile */}
           <button onClick={onClose} className="lg:hidden text-[#9CA3AF] hover:text-white transition">
@@ -89,7 +89,7 @@ export default function Sidebar({ isOpen, onClose }) {
               }
             >
               <Icon size={18} className="shrink-0" />
-              <span className={`text-[13px] font-semibold ${!isOpen ? 'lg:hidden' : 'block'}`}>{label}</span>
+              <span className={`text-[13px] font-semibold ${!isOpen ? 'hidden lg:block' : 'block'}`}>{label}</span>
               
               {/* Tooltip for collapsed mode */}
               {!isOpen && (
@@ -107,7 +107,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
               <Avatar user={user} className="w-full h-full" />
             </div>
-            <div className={`overflow-hidden ${!isOpen ? 'lg:hidden' : 'block'}`}>
+            <div className={`overflow-hidden ${!isOpen ? 'hidden lg:block' : 'block'}`}>
               <p className="text-sm font-semibold text-white truncate">
                 {user?.firstName ? `${user.firstName} ${user.lastName}` : 'User'}
               </p>
@@ -122,7 +122,7 @@ export default function Sidebar({ isOpen, onClose }) {
             className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[#6B7280] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all text-sm font-medium"
           >
             <LogOut size={16} />
-            <span className={`${!isOpen ? 'lg:hidden' : 'block'}`}>Sign Out</span>
+            <span className={`${!isOpen ? 'hidden lg:block' : 'block'}`}>Sign Out</span>
           </button>
         </div>
       </aside>

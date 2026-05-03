@@ -4,7 +4,7 @@ import { Menu } from 'lucide-react';
 
 export default function AppLayout({ children }) {
   // Set sidebar to open by default so text labels are visible
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-[#F5F6F8]">
@@ -19,13 +19,6 @@ export default function AppLayout({ children }) {
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB] sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            {/* Desktop Toggle Button */}
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="hidden lg:flex p-2 rounded-xl bg-[#F5F6F8] text-[#111827] hover:bg-[#E5E7EB] transition-colors"
-            >
-              <Menu size={20} />
-            </button>
             
             <div className="lg:hidden flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-[#3B82F6] flex items-center justify-center">
