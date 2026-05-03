@@ -1,17 +1,8 @@
-const { Client } = require('pg');
-require('dotenv').config();
+const prisma = require('../src/prismaClient');
 
-async function check() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
-  try {
-    await client.connect();
-    const res = await client.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-    console.log('Tables found in database:', res.rows.map(t => t.table_name));
-  } catch (err) {
-    console.error('Error connecting to database:', err.message);
-  } finally {
-    await client.end();
-  }
+async function main() {
+  const count = await prisma.user.count();
+  console.log(`Current User Count: ${count}`);
 }
 
-check();
+main().finally(() => prisma.$disconnect());

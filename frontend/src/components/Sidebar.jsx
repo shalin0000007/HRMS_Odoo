@@ -53,7 +53,7 @@ export default function Sidebar({ isOpen, onClose }) {
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
           onClick={onClose}
         />
@@ -90,7 +90,7 @@ export default function Sidebar({ isOpen, onClose }) {
             >
               <Icon size={18} className="shrink-0" />
               <span className="text-[13px] font-semibold">{label}</span>
-              
+
             </NavLink>
           ))}
         </nav>
