@@ -410,6 +410,7 @@ export default function Dashboard() {
                   <th className="px-5 py-3 font-semibold">Period</th>
                   <th className="px-5 py-3 font-semibold">Gross</th>
                   <th className="px-5 py-3 font-semibold">Net Pay</th>
+                  <th className="px-5 py-3 font-semibold text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F5F6F8]">
@@ -418,6 +419,30 @@ export default function Dashboard() {
                     <td className="px-5 py-3.5 text-sm font-semibold text-[#111827]">{p.payrun?.month}/{p.payrun?.year}</td>
                     <td className="px-5 py-3.5 text-sm font-mono text-[#6B7280]">₹{Math.round(Number(p.grossSalary)).toLocaleString('en-IN')}</td>
                     <td className="px-5 py-3.5 text-sm font-mono font-bold text-[#111827]">₹{Math.round(Number(p.netPay)).toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-3.5 text-center">
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payroll/payslips/${p.id}/pdf`, {
+                              headers: { 'Authorization': `Bearer ${localStorage.getItem('empay_token')}` }
+                            });
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute('download', `Payslip_${p.payrun?.month}_${p.payrun?.year}.pdf`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                          } catch (err) {
+                            console.error('Download failed', err);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg bg-[#3B82F6]/10 text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white transition-all"
+                      >
+                        <FileText size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
