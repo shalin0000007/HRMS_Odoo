@@ -20,7 +20,9 @@ function generateLoginId(first, last, year) {
   const f2 = (first || 'XX').substring(0, 2).toUpperCase();
   const l2 = (last  || 'XX').substring(0, 2).toUpperCase();
   const yr = year || new Date().getFullYear();
-  return `OI${f2}${l2}${yr}0001`;
+  // Add a random 4-digit number to ensure uniqueness in production
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `OI${f2}${l2}${yr}${random}`;
 }
 
 export default function SignUp() {
